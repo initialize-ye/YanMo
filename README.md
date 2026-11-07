@@ -28,11 +28,26 @@
 
 ## 快速开始
 
-需要 Node.js 18.17+（推荐 20+）。
+普通用户推荐使用 **绿色便携版**，解压双击即可，不需要安装 Node.js。
+开发者或想修改代码时，使用源码启动方式（需要 Node.js 18.17+，推荐 20+）。
 
-### 方式一：双击启动（Windows，推荐）
+### 方式一：绿色便携版（Windows，免安装，推荐给普通用户）
 
-直接双击项目根目录的 **`启动项目.cmd`**（或 `启动项目.ps1`）。
+1. 获取 `yanmo-portable-win64.zip`：
+   - 由维护者运行 `npm run build:portable` 生成，文件位于 `dist/yanmo-portable-win64.zip`；
+   - 或在 GitHub Actions 中手动运行 **Build Windows Portable** 工作流，下载生成的 Artifact。
+2. 把 zip 完整解压到任意目录（例如 `D:\YanMo`）。
+3. 双击 **`启动研墨.cmd`**。
+4. 浏览器自动打开；首次使用在页面「设置」里填写 AI 接口信息即可。
+
+绿色包已内置 Node.js 运行环境，不需要安装任何软件。作文和报告仍只保存在本机浏览器中。
+
+> 如果 Windows 提示“Windows 已保护你的电脑”，点击「更多信息 → 仍要运行」。
+> 这是未签名的 `node.exe` 触发的 SmartScreen 提示，不是程序损坏。
+
+### 方式二：双击启动（Windows，开发模式）
+
+适合已安装 Node.js、需要修改代码的用户。直接双击项目根目录的 **`启动项目.cmd`**（或 `启动项目.ps1`）。
 
 - 会打开一个 PowerShell 窗口，显示启动过程和错误提示。
 - 首次运行会自动 `npm install`；服务就绪后自动打开浏览器。
@@ -45,7 +60,7 @@ PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
 PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001 -NoBrowser
 ```
 
-### 方式二：手动启动
+### 方式三：手动启动
 
 ```powershell
 npm install
@@ -53,6 +68,24 @@ npm run dev
 ```
 
 打开 http://localhost:3000。
+
+### 打包 / 分发绿色便携版
+
+维护者执行：
+
+```powershell
+npm run build:portable
+```
+
+脚本会：
+
+1. 使用 Next.js standalone 模式构建；
+2. 优先下载 Windows x64 便携版 Node.js 并打包进 `runtime/`；下载失败时自动使用本机 Node.js；
+3. 复制静态资源、启动器和使用说明；
+4. 生成 `dist/yanmo-portable-win64.zip`（zip 内含顶层文件夹，解压后不会散落）。
+
+把 zip 发给使用者即可，对方不需要安装 Node.js、Docker 或其他运行环境。
+GitHub Actions 中也提供了 **Build Windows Portable** 工作流，可手动运行并下载 Artifact。
 
 ## 接入 AI
 

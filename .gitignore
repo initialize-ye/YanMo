@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+dist
 .shots
 .env
 .env.local
