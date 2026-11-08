@@ -38,7 +38,8 @@
 ### 方式一：绿色便携版（Windows，免安装，推荐给普通用户）
 
 1. 获取 `yanmo-portable-win64.zip`：
-   - 由维护者运行 `npm run build:portable` 生成，文件位于 `dist/yanmo-portable-win64.zip`；
+   - 直接下载：[GitHub Releases](https://github.com/initialize-ye/YanMo/releases/latest)；
+   - 或由维护者运行 `npm run build:portable` 生成，文件位于 `dist/yanmo-portable-win64.zip`；
    - 或在 GitHub Actions 中手动运行 **Build Windows Portable** 工作流，下载生成的 Artifact。
 2. 把 zip 完整解压到任意目录（例如 `D:\YanMo`）。
 3. 双击 **`启动研墨.cmd`**。
