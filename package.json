@@ -2,12 +2,19 @@
   "name": "yanmo-ai",
   "version": "0.1.0",
   "private": true,
+  "description": "考研英语手写作文批改工具",
+  "author": "YanMo",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "build:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable.ps1"
+    "build:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable.ps1",
+    "prepare:standalone": "node scripts/prepare-standalone.mjs",
+    "electron:dev": "electron .",
+    "build:exe": "npm run build && npm run prepare:standalone && electron-builder --win portable --config electron-builder.yml",
+    "build:exe:dir": "npm run build && npm run prepare:standalone && electron-builder --win --dir --config electron-builder.yml"
   },
   "engines": {
     "node": ">=18.17.0"
@@ -27,6 +34,8 @@
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"

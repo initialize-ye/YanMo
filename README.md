@@ -32,15 +32,28 @@
 
 ## 快速开始
 
-普通用户推荐使用 **绿色便携版**，解压双击即可，不需要安装 Node.js。
+普通用户推荐使用 **Windows 桌面版** 或 **绿色便携版**，双击即可，不需要安装 Node.js。
 开发者或想修改代码时，使用源码启动方式（需要 Node.js 18.17+，推荐 20+）。
 
-### 方式一：绿色便携版（Windows，免安装，推荐给普通用户）
+### 方式一：Windows 桌面版（Electron，推荐）
+
+1. 从 [GitHub Releases](https://github.com/initialize-ye/YanMo/releases/latest) 下载 `YanMo-*-win64.exe`。
+2. 双击运行，会打开独立窗口，不再需要浏览器或 Node.js。
+3. 首次使用在页面「设置」里填写 AI 接口信息。
+
+桌面版说明：
+
+- 程序内部会启动一个只监听 `127.0.0.1:38217` 的本地服务，再加载应用界面。
+- 报告和设置在 `%APPDATA%\YanMo` 中持久保存；升级程序不会丢失。
+- 未签名的 exe 首次运行可能出现 SmartScreen 提示，点击「更多信息 → 仍要运行」即可。
+- 桌面版和绿色包的界面、功能、数据格式一致，但两者使用各自独立的本地数据目录。
+
+### 方式二：绿色便携版（Windows，免安装）
 
 1. 获取 `yanmo-portable-win64.zip`：
    - 直接下载：[GitHub Releases](https://github.com/initialize-ye/YanMo/releases/latest)；
    - 或由维护者运行 `npm run build:portable` 生成，文件位于 `dist/yanmo-portable-win64.zip`；
-   - 或在 GitHub Actions 中手动运行 **Build Windows Portable** 工作流，下载生成的 Artifact。
+   - 或在 GitHub Actions 中手动运行 **Build Windows Packages** 工作流，下载生成的 Artifact。
 2. 把 zip 完整解压到任意目录（例如 `D:\YanMo`）。
 3. 双击 **`启动研墨.cmd`**。
 4. 浏览器自动打开；首次使用在页面「设置」里填写 AI 接口信息即可。
@@ -50,7 +63,7 @@
 > 如果 Windows 提示“Windows 已保护你的电脑”，点击「更多信息 → 仍要运行」。
 > 这是未签名的 `node.exe` 触发的 SmartScreen 提示，不是程序损坏。
 
-### 方式二：双击启动（Windows，开发模式）
+### 方式三：双击启动（Windows，开发模式）
 
 适合已安装 Node.js、需要修改代码的用户。直接双击项目根目录的 **`启动项目.cmd`**（或 `启动项目.ps1`）。
 
@@ -65,7 +78,7 @@ PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
 PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001 -NoBrowser
 ```
 
-### 方式三：手动启动
+### 方式四：手动启动
 
 ```powershell
 npm install
@@ -74,7 +87,32 @@ npm run dev
 
 打开 http://localhost:3000。
 
-### 打包 / 分发绿色便携版
+### 打包 / 分发
+
+**Windows 桌面版（Electron）**
+
+```powershell
+npm install
+npm run build:exe
+```
+
+输出：
+
+```text
+dist-electron/YanMo-<version>-win64.exe
+```
+
+构建过程会：
+
+1. 用 Next.js standalone 模式构建应用；
+2. 把静态资源复制进 standalone 目录；
+3. 用 Electron 封装成本地窗口程序；
+4. 通过 `afterPack` 钩子补齐 standalone 服务的精简 `node_modules`；
+5. 生成单文件 Windows portable exe。
+
+桌面版固定使用本机端口 `38217`，只监听 `127.0.0.1`；数据保存在 `%APPDATA%\YanMo`。
+
+**绿色便携版（Windows，免安装）**
 
 维护者执行：
 
@@ -89,8 +127,7 @@ npm run build:portable
 3. 复制静态资源、启动器和使用说明；
 4. 生成 `dist/yanmo-portable-win64.zip`（zip 内含顶层文件夹，解压后不会散落）。
 
-把 zip 发给使用者即可，对方不需要安装 Node.js、Docker 或其他运行环境。
-GitHub Actions 中也提供了 **Build Windows Portable** 工作流，可手动运行并下载 Artifact。
+GitHub Actions 中提供了 **Build Windows Packages** 工作流，可手动运行并下载桌面版 exe 和绿色包 Artifact；推送 `v*` 标签时也会自动附加到 Release。
 
 ## 接入 AI
 
@@ -208,6 +245,15 @@ components/
   report/                 原文批注、段落重写
   self-check.tsx          提交前自查
   site-header.tsx         ...
+electron/
+  main.cjs                桌面版主进程：启动本地服务、创建窗口
+build/
+  icon.ico                应用图标
+scripts/
+  build-portable.ps1      绿色便携包构建
+  prepare-standalone.mjs  复制静态资源到 standalone
+  after-pack.cjs          把服务端 node_modules 补进 Electron 包
+electron-builder.yml      Windows exe 打包配置
 lib/
   server/                 仅服务端：提示词、AI 调用、校验
   prompt-presets.ts       内置批改风格与预设类型
@@ -222,18 +268,23 @@ lib/
 ## 数据与隐私
 
 - 报告、个人水平设置、AI 配置、自定义提示词预设默认保存在浏览器 localStorage，不会写入数据库。
+- Windows 桌面版使用 Electron 的持久化存储，数据位于 `%APPDATA%\YanMo`；绿色包和源码版使用浏览器 localStorage。
 - 自定义提示词只在批改时发送给 AI；报告只记录预设名称，不保存提示词原文。
 - 图片只在识别时上传到你配置的 AI 服务；研墨不做对象存储，也不保留原图。
 - 报告最多保留 24 篇；可在设置页导出 JSON 或清除全部报告。
-- 清除站点数据、更换浏览器或无痕模式会导致档案丢失。
+- 绿色包/浏览器版清除站点数据、更换浏览器或无痕模式会导致档案丢失；桌面版不要手动删除 `%APPDATA%\YanMo`。
 
 ## 开发脚本
 
 ```bash
-npm run dev        # 开发服务器
-npm run build      # 生产构建
-npm run start      # 启动生产构建
-npm run typecheck  # TypeScript 检查
+npm run dev                 # 开发服务器
+npm run build               # 生产构建（Next.js standalone）
+npm run start               # 启动生产构建
+npm run typecheck           # TypeScript 检查
+npm run prepare:standalone  # 把静态资源复制进 .next/standalone
+npm run electron:dev        # 以 Electron 窗口运行已构建的应用
+npm run build:exe           # 构建 Windows 桌面版 exe
+npm run build:exe:dir       # 只生成未打包的 Electron 目录，便于调试
 ```
 
 ## 常见问题
@@ -256,6 +307,12 @@ PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
 ```powershell
 PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001
 ```
+
+**桌面版提示端口 38217 被占用**
+桌面版固定使用 `127.0.0.1:38217`。请先关闭已经运行的研墨窗口，或在任务管理器结束残留的 `YanMo.exe` 后重试。不要随意修改端口，否则 Electron 会把它当成新的站点，之前的本地数据不会自动出现。
+
+**桌面版数据在哪里**
+位于 `%APPDATA%\YanMo`。升级 exe 一般不会删除这里；卸载或手动清理该目录才会丢失报告和设置。
 
 **提示「还没有接入 AI」**
 到 `/settings` 填写 Key，或配置 `.env.local` 后重启。

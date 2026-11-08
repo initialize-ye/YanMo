@@ -1,4 +1,4 @@
-name: Build Windows Portable
+name: Build Windows Packages
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -31,17 +31,36 @@ jobs:
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-portable.ps1
 
-      - name: Upload portable zip
+      - name: Ensure Electron runtime
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+        run: node node_modules/electron/install.js
+
+      - name: Prepare standalone assets
+        run: npm run prepare:standalone
+
+      - name: Build Electron exe
+        shell: powershell
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
+        run: npx electron-builder --win portable --config electron-builder.yml
+
+      - name: Upload Windows packages
         uses: actions/upload-artifact@v4
         with:
-          name: yanmo-portable-win64
-          path: dist/yanmo-portable-win64.zip
+          name: yanmo-windows
+          path: |
+            dist/yanmo-portable-win64.zip
+            dist-electron/YanMo-*-win64.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Attach zip to release
+      - name: Attach packages to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/yanmo-portable-win64.zip
+          files: |
+            dist/yanmo-portable-win64.zip
+            dist-electron/YanMo-*-win64.exe
           generate_release_notes: true
