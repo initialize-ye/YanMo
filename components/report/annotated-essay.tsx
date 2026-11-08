@@ -89,7 +89,7 @@ function renderParagraph(
           </sup>
         </button>
         {showCorrections && (
-          <span className="mx-1 inline bg-jade/[0.07] px-1 font-sans text-[14px] font-medium not-italic leading-6 text-jade">
+          <span className="mx-1 inline bg-jade/[0.07] px-1 font-sans not-italic text-jade">
             → {match.annotation.suggestion}
           </span>
         )}
