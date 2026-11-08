@@ -59,7 +59,7 @@ export default function ReportPage() {
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [showModel, setShowModel] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("language");
-  const [showCorrections, setShowCorrections] = useState(false);
+  const [showCorrections, setShowCorrections] = useState(true);
   const [compact, setCompact] = useState(false);
   const [practice, setPractice] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
@@ -78,7 +78,7 @@ export default function ReportPage() {
   useEffect(() => {
     setLoading(true);
     setFilter("language");
-    setShowCorrections(false);
+    setShowCorrections(true);
     setPractice(false);
     setRevealed(new Set());
     setDrafts({});
@@ -187,9 +187,10 @@ export default function ReportPage() {
   };
 
   const togglePractice = () => {
-    setPractice((value) => !value);
+    const next = !practice;
+    setPractice(next);
     setRevealed(new Set());
-    setShowCorrections(false);
+    setShowCorrections(!next);
   };
 
   const toggleReveal = (annotationId: string) => {
@@ -602,15 +603,17 @@ export default function ReportPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1.28fr_0.72fr]">
             <div className="lg:sticky lg:top-[92px] lg:self-start">
-              <div className="paper-card p-5 sm:p-7">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+              <div className="paper-card p-5 sm:p-8">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">
-                      学生原文 · 保留原始错误
+                      学生原文
                     </span>
-                    <span className="text-[13px] text-ink-mute">{filteredAnnotations.length} 处</span>
+                    <span className="chip !py-0.5 !text-[12px]">
+                      {filteredAnnotations.length} 处标记
+                    </span>
                   </div>
                   {practice ? (
                     <span className="text-[13px] text-ink-mute">练习模式中不显示修改</span>
@@ -637,6 +640,7 @@ export default function ReportPage() {
                   activeId={activeNote}
                   onSelect={selectNote}
                   showCorrections={showCorrections}
+                  className="space-y-6 sm:!text-[18px] sm:!leading-[2.05]"
                 />
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[13px] text-ink-mute">

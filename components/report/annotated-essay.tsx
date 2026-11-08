@@ -10,6 +10,7 @@ interface Props {
   activeId: string | null;
   onSelect: (id: string) => void;
   showCorrections?: boolean;
+  className?: string;
 }
 
 export function AnnotatedEssay({
@@ -17,7 +18,8 @@ export function AnnotatedEssay({
   annotations,
   activeId,
   onSelect,
-  showCorrections = false
+  showCorrections = false,
+  className
 }: Props) {
   const paragraphs = text
     .split(/\n\s*\n/)
@@ -25,7 +27,7 @@ export function AnnotatedEssay({
     .filter(Boolean);
 
   return (
-    <div className="essay-body space-y-5">
+    <div className={cn("essay-body space-y-5", className)}>
       {paragraphs.map((paragraph, paragraphIndex) => (
         <p key={paragraphIndex}>
           {renderParagraph(paragraph, annotations, activeId, onSelect, showCorrections)}
