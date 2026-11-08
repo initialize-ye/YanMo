@@ -135,11 +135,14 @@ function mapHttpError(status: number, detail: string): AppError {
   if (status === 401 || status === 403) {
     return new AppError(401, "AI_AUTH", "API Key 无效或没有访问该模型的权限。", detail);
   }
+  if (status === 402) {
+    return new AppError(402, "AI_QUOTA", "AI 账户余额不足，请充值后重试。", detail);
+  }
   if (status === 404) {
     return new AppError(404, "AI_MODEL_NOT_FOUND", "接口或模型不存在，请检查 Base URL 与模型名称。", detail);
   }
   if (status === 429) {
-    return new AppError(429, "AI_RATE_LIMIT", "AI 服务限流或余额不足，请稍后再试。", detail);
+    return new AppError(429, "AI_RATE_LIMIT", "AI 服务限流，请稍后再试。", detail);
   }
   if (status === 400 || status === 422) {
     return new AppError(400, "AI_REQUEST", "AI 服务拒绝了本次请求，请检查模型是否支持图片输入。", detail);
@@ -263,8 +266,21 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
     );
   };
 
+  const withRetry = async (jsonMode: boolean): Promise<string> => {
+    try {
+      return await once(jsonMode);
+    } catch (error) {
+      const retryable =
+        error instanceof AppError &&
+        (error.code === "AI_UPSTREAM" || error.code === "AI_NETWORK");
+      if (!retryable) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return once(jsonMode);
+    }
+  };
+
   try {
-    return await once(useJson);
+    return await withRetry(useJson);
   } catch (error) {
     const detail = error instanceof AppError ? error.detail ?? "" : "";
     const unsupportedJsonMode =
@@ -272,7 +288,7 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
       error.status === 400 &&
       /response_format|json_object|json mode/i.test(detail);
     if (useJson && unsupportedJsonMode) {
-      return once(false);
+      return withRetry(false);
     }
     throw error;
   }

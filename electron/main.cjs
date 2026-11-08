@@ -12,9 +12,12 @@ const CAPTURE_PATH = process.env.YANMO_CAPTURE_PATH || "";
 let mainWindow = null;
 let serverProcess = null;
 let serverLogs = "";
+let logStream = null;
 
 app.setName("YanMo");
 app.setPath("userData", path.join(app.getPath("appData"), "YanMo"));
+const LOG_DIR = path.join(app.getPath("userData"), "logs");
+const LOG_FILE = path.join(LOG_DIR, "server.log");
 
 const hasLock = app.requestSingleInstanceLock();
 if (!hasLock) {
@@ -29,8 +32,29 @@ if (!hasLock) {
   app.whenReady().then(bootstrap).catch(handleFatal);
 }
 
+function prepareLog() {
+  if (logStream) return;
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    logStream = fs.createWriteStream(LOG_FILE, { flags: "a" });
+    logStream.write(`\n--- ${new Date().toISOString()} ---\n`);
+  } catch {}
+}
+
 function appendLog(chunk) {
-  serverLogs = (serverLogs + chunk.toString()).slice(-24000);
+  const text = chunk.toString();
+  serverLogs = (serverLogs + text).slice(-24000);
+  prepareLog();
+  try {
+    logStream?.write(text);
+  } catch {}
+}
+
+function closeLog() {
+  try {
+    logStream?.end();
+  } catch {}
+  logStream = null;
 }
 
 function getServerDir() {
@@ -188,6 +212,7 @@ async function createWindow(url) {
 }
 
 async function bootstrap() {
+  prepareLog();
   const url = await startServer();
   await createWindow(url);
 }
@@ -195,12 +220,16 @@ async function bootstrap() {
 function handleFatal(error) {
   console.error(error);
   const detail = serverLogs ? `${error.message}\n\n${serverLogs}` : error.message;
+  appendLog(`\n[fatal] ${detail}\n`);
   if (CAPTURE_PATH) {
     console.error(detail);
     app.quit();
     return;
   }
-  dialog.showErrorBox("研墨 AI 启动失败", detail);
+  dialog.showErrorBox(
+    "研墨 AI 启动失败",
+    `${detail}\n\n日志文件：\n${LOG_FILE}`
+  );
   app.quit();
 }
 
@@ -208,5 +237,8 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-app.on("before-quit", stopServer);
+app.on("before-quit", () => {
+  stopServer();
+  closeLog();
+});
 process.on("exit", stopServer);

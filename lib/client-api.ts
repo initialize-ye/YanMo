@@ -41,15 +41,30 @@ async function post<T>(path: string, body: unknown, config: AiConfig | null): Pr
       body: JSON.stringify(body),
       signal: controller.signal
     });
-    const payload = (await response.json().catch(() => null)) as
-      | { error?: string; code?: string; detail?: string }
-      | null;
+    const rawText = await response.text().catch(() => "");
+    let payload: { error?: string; code?: string; detail?: string } | null = null;
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText) as { error?: string; code?: string; detail?: string };
+      } catch {
+        payload = null;
+      }
+    }
     if (!response.ok) {
+      const fallback = payload?.error ?? `本地接口返回 ${response.status}，请稍后重试。`;
+      const detail = payload?.detail
+        ? `（${String(payload.detail).slice(0, 160)}）`
+        : !payload && rawText
+          ? `（${rawText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}）`
+          : "";
       throw new ClientApiError(
-        payload?.error ?? "服务暂时不可用，请稍后重试。",
+        `${fallback}${detail}`,
         payload?.code ?? "HTTP_ERROR",
         response.status
       );
+    }
+    if (!payload) {
+      throw new ClientApiError("本地接口返回了无法解析的响应。", "BAD_RESPONSE", response.status);
     }
     return payload as T;
   } catch (error) {

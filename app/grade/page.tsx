@@ -1512,7 +1512,9 @@ function GradingPanel({
                       ? "模型响应时间过长。可以重试一次，或在设置中换一个更快的模型。"
                       : error.code === "AI_NOT_CONFIGURED"
                         ? "还没有配置 AI。到设置页填入 Key 后即可继续。"
-                        : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
+                        : error.code === "AI_QUOTA"
+                          ? "AI 账户余额或额度不足，请到服务商后台充值后重试。"
+                          : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
                 </p>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">

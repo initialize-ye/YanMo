@@ -14,7 +14,7 @@ export class AppError extends Error {
 
 export function errorResponse(error: unknown): Response {
   if (error instanceof AppError) {
-    if (error.status >= 500) {
+    if (error.status >= 400) {
       console.error(`[${error.code}] ${error.message}`, error.detail ?? "");
     }
     return Response.json(
