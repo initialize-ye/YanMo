@@ -88,7 +88,7 @@ export interface GradeResult {
     sentences: number;
     paragraphs: number;
   };
-  source: "ai" | "demo";
+  source: "ai";
   model?: string;
 }
 

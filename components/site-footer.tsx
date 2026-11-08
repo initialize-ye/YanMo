@@ -8,7 +8,7 @@ export function SiteFooter() {
         <div>
           <Logo />
           <p className="mt-6 max-w-sm text-[15px] leading-7 text-ink-mute">
-            手写作文智能批改。按考研阅卷标准给出分数、逐句批注和适合你当前阶段的提分路径。
+            手写作文批改工具。标出具体错误，记录常见问题，并给出下一步练习。
           </p>
         </div>
         <div>
@@ -17,8 +17,8 @@ export function SiteFooter() {
             <Link href="/grade" className="text-ink-mute transition-colors hover:text-jade">
               上传作文批改
             </Link>
-            <Link href="/report/demo" className="text-ink-mute transition-colors hover:text-jade">
-              查看示例报告
+            <Link href="/mistakes" className="text-ink-mute transition-colors hover:text-jade">
+              打开错题本
             </Link>
             <Link href="/history" className="text-ink-mute transition-colors hover:text-jade">
               写作档案
@@ -39,7 +39,7 @@ export function SiteFooter() {
       <div className="border-t border-line">
         <div className="wrap flex flex-col gap-2 py-6 text-[13px] text-ink-mute sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 研墨 YANMO · 为考研写作而做</p>
-          <p>AI 评分仅供训练参考，不能替代正式考试阅卷。</p>
+          <p>评分仅供训练参考，不能替代正式考试阅卷。</p>
         </div>
       </div>
     </footer>

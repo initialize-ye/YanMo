@@ -60,15 +60,20 @@ export default function HistoryPage() {
               <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 写作档案
             </p>
             <h1 className="display mt-3 text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight">
-              你写过的，都在这里。
+              写作记录
             </h1>
             <p className="mt-2 text-[15px] text-ink-mute">
-              分数是结果，错误分布才是下一步的方向。档案只保存在这台设备的浏览器中。
+              查看每次批改的分数、错误类型和修改记录。档案只保存在这台设备的浏览器中。
             </p>
           </div>
-          <Link href="/grade" className="btn btn-primary !px-4 !py-2.5 text-[14.5px]">
-            批改新作文 <ArrowUpRight size={15} />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/mistakes" className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]">
+              错题本
+            </Link>
+            <Link href="/grade" className="btn btn-primary !px-4 !py-2.5 text-[14.5px]">
+              批改新作文 <ArrowUpRight size={15} />
+            </Link>
+          </div>
         </div>
 
         {loading ? (
@@ -176,8 +181,8 @@ export default function HistoryPage() {
                 )}
                 {issues[0] && (
                   <p className="marginalia mt-6 border-t border-line pt-4 text-[14px] leading-6">
-                    下一篇动笔前，先花 30 秒检查「{CATEGORY_LABELS[issues[0].category]}」类问题——
-                    这一类在你的批注里出现得最多。
+                    下一篇动笔前，先花 30 秒检查「{CATEGORY_LABELS[issues[0].category]}」类问题。
+                    它在你的批注中出现最多。
                   </p>
                 )}
               </section>
@@ -252,17 +257,17 @@ function EmptyHistory() {
         <span className="seal absolute right-7 top-7 h-11 w-11 text-[16.5px]">档</span>
         <p className="eyebrow">暂时空白</p>
         <h2 className="display mt-4 max-w-sm text-[clamp(1.8rem,3.2vw,2.4rem)] leading-tight">
-          第一篇报告，会是你档案的起点。
+          还没有批改记录。
         </h2>
         <p className="mt-4 max-w-md text-[15px] leading-7 text-ink-mute">
-          上传一张手写作文照片，或者直接粘贴文字稿。批改完成后，分数、错误类型和训练建议会自动进入这里。
+          上传一篇手写作文，或直接粘贴文字稿。批改完成后，分数、错误类型和修改建议会出现在这里。
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/grade" className="btn btn-primary !px-5 !py-3">
             去批改第一篇 <ArrowRight size={16} />
           </Link>
-          <Link href="/report/demo" className="btn btn-ghost !px-5 !py-3">
-            先看示例
+          <Link href="/mistakes" className="btn btn-ghost !px-5 !py-3">
+            打开错题本
           </Link>
         </div>
         <p className="mt-7 inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
@@ -271,12 +276,12 @@ function EmptyHistory() {
       </div>
 
       <div>
-        <p className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">档案会记录什么</p>
+        <p className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">这里会记录什么</p>
         <div className="mt-4 border-t border-line">
           {[
             ["分数趋势", "按得分率对比不同题型，避免被满分差异误导。"],
             ["高频错误", "同一种问题反复出现时，它会成为下一轮重点。"],
-            ["逐篇回看", "每份报告都能重新打开，对照自己的修改。"],
+            ["错题练习", "同类错误会汇总到错题本，可以遮住答案自己改。"],
             ["数据自主", "所有记录存储在本机，可随时导出或清除。"]
           ].map(([title, desc], index) => (
             <div key={title} className="flex gap-4 border-b border-line py-4">

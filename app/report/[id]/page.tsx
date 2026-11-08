@@ -14,7 +14,6 @@ import {
   Clock3,
   Eye,
   EyeOff,
-  Info,
   Maximize2,
   Minimize2,
   Printer,
@@ -33,7 +32,6 @@ import {
   kindLabel,
   levelLabel
 } from "@/lib/constants";
-import { createDemoResult } from "@/lib/demo";
 import { deleteReport, loadCompactMode, loadReport, saveCompactMode } from "@/lib/storage";
 import {
   LANGUAGE_CATEGORIES,
@@ -63,6 +61,9 @@ export default function ReportPage() {
   const [filter, setFilter] = useState<FilterKey>("language");
   const [showCorrections, setShowCorrections] = useState(false);
   const [compact, setCompact] = useState(false);
+  const [practice, setPractice] = useState(false);
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setCompact(loadCompactMode());
@@ -78,12 +79,10 @@ export default function ReportPage() {
     setLoading(true);
     setFilter("language");
     setShowCorrections(false);
+    setPractice(false);
+    setRevealed(new Set());
+    setDrafts({});
     setActiveNote(null);
-    if (id === "demo") {
-      setReport(createDemoResult());
-      setLoading(false);
-      return;
-    }
     setReport(loadReport(id));
     setLoading(false);
   }, [id]);
@@ -139,7 +138,6 @@ export default function ReportPage() {
 
   const { meta, score, stats, overview, annotations, rewrites, modelEssay, suggestions, nextSteps } =
     report;
-  const isDemo = report.source === "demo";
   const dimensionMax = 10;
   const targetGap = Math.round((score.total - meta.targetScore) * 2) / 2;
   const totalMinutes = nextSteps.reduce((sum, step) => sum + step.minutes, 0);
@@ -186,6 +184,29 @@ export default function ReportPage() {
     setActiveNote(noteId);
     const element = document.getElementById(`note-${noteId}`);
     if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const togglePractice = () => {
+    setPractice((value) => !value);
+    setRevealed(new Set());
+    setShowCorrections(false);
+  };
+
+  const toggleReveal = (annotationId: string) => {
+    setRevealed((current) => {
+      const next = new Set(current);
+      if (next.has(annotationId)) next.delete(annotationId);
+      else next.add(annotationId);
+      return next;
+    });
+  };
+
+  const revealAllAnnotations = () => {
+    setRevealed((current) => {
+      const next = new Set(current);
+      filteredAnnotations.forEach((item) => next.add(item.id));
+      return next;
+    });
   };
 
   const copySummary = async () => {
@@ -244,29 +265,6 @@ export default function ReportPage() {
     <>
       <SiteHeader />
       <main className="wrap pb-24 pt-8 sm:pt-10">
-        {isDemo && (
-          <div className="print-hide mb-6 flex flex-col gap-3 rounded-xl border border-[#d2e3fc] bg-[#e8f0fe] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-2.5">
-              <Info size={15} className="mt-0.5 shrink-0 text-jade" />
-              <p className="text-[14.5px] leading-6 text-ink-soft">
-                <strong className="font-medium text-ink">这是示例报告。</strong>{" "}
-                用你自己的作文批改后，就能看到属于你的分数与诊断。
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 pl-6 sm:pl-0">
-              <Link href="/grade" className="btn btn-primary !px-3.5 !py-2 text-[14px]">
-                批改我的作文
-              </Link>
-              <Link
-                href="/settings"
-                className="text-[14px] font-medium text-ink-mute underline decoration-line underline-offset-4 hover:text-jade"
-              >
-                接入 AI
-              </Link>
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <Link
@@ -289,7 +287,7 @@ export default function ReportPage() {
                   <span className="chip !py-0.5">{meta.promptStyle}</span>
                 </>
               )}
-              {!isDemo && <span className="text-jade">已存入本机</span>}
+              <span className="text-jade">已存入本机</span>
             </div>
             <h1 className="display mt-2 text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight">
               {meta.topicTitle}
@@ -329,35 +327,34 @@ export default function ReportPage() {
             >
               <Printer size={13} /> 打印 / PDF
             </button>
-            {!isDemo &&
-              (confirmDelete ? (
-                <span className="flex items-center gap-1 border border-cinnabar/35 px-2 py-1">
-                  <span className="text-[13px] text-cinnabar">删除这份报告？</span>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="px-1 text-[13px] font-medium text-cinnabar hover:underline"
-                  >
-                    删除
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-1 text-[13px] text-ink-mute hover:underline"
-                  >
-                    取消
-                  </button>
-                </span>
-              ) : (
+            {confirmDelete ? (
+              <span className="flex items-center gap-1 border border-cinnabar/35 px-2 py-1">
+                <span className="text-[13px] text-cinnabar">删除这份报告？</span>
                 <button
                   type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="btn-quiet !px-2"
-                  aria-label="删除报告"
+                  onClick={handleDelete}
+                  className="px-1 text-[13px] font-medium text-cinnabar hover:underline"
                 >
-                  <Trash2 size={14} />
+                  删除
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-1 text-[13px] text-ink-mute hover:underline"
+                >
+                  取消
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="btn-quiet !px-2"
+                aria-label="删除报告"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -377,14 +374,14 @@ export default function ReportPage() {
                   区间 {formatScore(score.predicted[0])}–{formatScore(score.predicted[1])}
                 </span>
               </div>
-              <p className="mt-6 text-[13px] leading-5 text-ink-mute">AI 估分仅供训练参考</p>
+              <p className="mt-6 text-[13px] leading-5 text-ink-mute">估分仅供训练参考</p>
             </div>
 
             <div className="px-5 py-7 sm:px-8">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="chip !py-0.5">{levelLabel(meta.level)}</span>
                 <span className="chip !py-0.5">目标 {meta.targetScore} 分</span>
-                {!isDemo && report.model && (
+                {report.model && (
                   <span className="text-[13px] text-ink-mute">由 {report.model} 批改</span>
                 )}
               </div>
@@ -478,7 +475,7 @@ export default function ReportPage() {
           <section className="mt-10 grid gap-px border border-line bg-line md:grid-cols-2">
             <div className="bg-white p-6">
               <h2 className="flex items-center gap-2 text-[15px] font-medium text-jade">
-                <CheckCircle2 size={15} /> 站得住的地方
+                <CheckCircle2 size={15} /> 写得好的地方
               </h2>
               {overview.strengths.length ? (
                 <ul className="mt-4 space-y-3">
@@ -497,7 +494,7 @@ export default function ReportPage() {
             </div>
             <div className="bg-white p-6">
               <h2 className="flex items-center gap-2 text-[15px] font-medium text-cinnabar">
-                <AlertTriangle size={15} /> 真正拉低分数的
+                <AlertTriangle size={15} /> 主要扣分点
               </h2>
               {overview.weaknesses.length ? (
                 <ul className="mt-4 space-y-3">
@@ -522,13 +519,34 @@ export default function ReportPage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="eyebrow">
-                  <span className="h-px w-6 bg-cinnabar/60" /> 逐句批改
+                  <span className="h-px w-6 bg-cinnabar/60" /> 逐句修改
                 </p>
                 <h2 className="display mt-2.5 text-[clamp(1.6rem,2.8vw,2.1rem)]">
-                  哪里写错了，怎么改
+                  错误位置与修改建议
                 </h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={togglePractice}
+                  aria-pressed={practice}
+                  className={cn(
+                    "btn !px-3 !py-1.5 text-[13px]",
+                    practice ? "btn-primary" : "btn-ghost"
+                  )}
+                >
+                  {practice ? <EyeOff size={12} /> : <Eye size={12} />}
+                  {practice ? "退出练习" : "练习模式"}
+                </button>
+                {practice && filteredAnnotations.some((item) => !revealed.has(item.id)) && (
+                  <button
+                    type="button"
+                    onClick={revealAllAnnotations}
+                    className="btn btn-ghost !px-3 !py-1.5 text-[13px]"
+                  >
+                    全部显示
+                  </button>
+                )}
                 {languageCount > 0 && (
                   <button
                     type="button"
@@ -547,8 +565,8 @@ export default function ReportPage() {
               </div>
             </div>
             <p className="mt-2 max-w-2xl text-[14.5px] leading-6 text-ink-mute">
-              默认只看语法、拼写和用词。红色波浪线标出错误位置，点击句子可跳到对应批注；
-              也可以打开「显示修改」，把正确表达直接插在原文里。
+              默认只看语法、拼写和用词。红色波浪线标出错误位置，点击句子可跳到对应批注。
+              打开练习模式后，修改建议会先隐藏，先自己改，再对照参考答案。
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-1.5">
               {filters.map((item) => {
@@ -594,20 +612,24 @@ export default function ReportPage() {
                     </span>
                     <span className="text-[13px] text-ink-mute">{filteredAnnotations.length} 处</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowCorrections((value) => !value)}
-                    aria-pressed={showCorrections}
-                    className={cn(
-                      "inline-flex items-center gap-1 border px-2 py-1 text-[13px] font-medium transition-colors",
-                      showCorrections
-                        ? "border-jade/40 bg-jade/[0.06] text-jade"
-                        : "border-line text-ink-mute hover:border-jade/40 hover:text-jade"
-                    )}
-                  >
-                    {showCorrections ? <EyeOff size={12} /> : <Eye size={12} />}
-                    {showCorrections ? "隐藏修改" : "显示修改"}
-                  </button>
+                  {practice ? (
+                    <span className="text-[13px] text-ink-mute">练习模式中不显示修改</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowCorrections((value) => !value)}
+                      aria-pressed={showCorrections}
+                      className={cn(
+                        "inline-flex items-center gap-1 border px-2 py-1 text-[13px] font-medium transition-colors",
+                        showCorrections
+                          ? "border-jade/40 bg-jade/[0.06] text-jade"
+                          : "border-line text-ink-mute hover:border-jade/40 hover:text-jade"
+                      )}
+                    >
+                      {showCorrections ? <EyeOff size={12} /> : <Eye size={12} />}
+                      {showCorrections ? "隐藏修改" : "显示修改"}
+                    </button>
+                  )}
                 </div>
                 <AnnotatedEssay
                   text={report.text}
@@ -668,15 +690,54 @@ export default function ReportPage() {
                     <p className="mt-3 font-serif text-[15.5px] leading-6 text-ink-mute line-through decoration-cinnabar/35 decoration-1">
                       {annotation.quote}
                     </p>
-                    <div className="mt-1.5 flex items-start gap-2">
-                      <ArrowRight size={14} className="mt-1.5 shrink-0 text-jade" />
-                      <p className="font-serif text-[15.5px] leading-6 text-jade">
-                        {annotation.suggestion}
-                      </p>
-                    </div>
-                    <p className="mt-3 border-t border-line/70 pt-3 text-[14px] leading-6 text-ink-soft">
-                      {annotation.explanation}
-                    </p>
+
+                    {practice && (
+                      <textarea
+                        value={drafts[annotation.id] ?? ""}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [annotation.id]: event.target.value
+                          }))
+                        }
+                        placeholder="先自己改一遍，再对照参考答案…"
+                        className="field mt-3 min-h-[84px] resize-y !py-2 text-[14px] leading-6"
+                        aria-label="我的修改"
+                      />
+                    )}
+
+                    {practice && (
+                      <button
+                        type="button"
+                        onClick={() => toggleReveal(annotation.id)}
+                        className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-jade hover:underline"
+                      >
+                        {revealed.has(annotation.id) ? <EyeOff size={13} /> : <Eye size={13} />}
+                        {revealed.has(annotation.id) ? "收起参考修改" : "对照参考修改"}
+                      </button>
+                    )}
+
+                    {(!practice || revealed.has(annotation.id)) && (
+                      <div className="mt-3">
+                        <div className="flex items-start gap-2">
+                          <ArrowRight size={14} className="mt-1.5 shrink-0 text-jade" />
+                          <p className="font-serif text-[15.5px] leading-6 text-jade">
+                            {annotation.suggestion}
+                          </p>
+                        </div>
+                        <p className="mt-2.5 border-t border-line/70 pt-2.5 text-[14px] leading-6 text-ink-soft">
+                          {annotation.explanation}
+                        </p>
+                        {practice && drafts[annotation.id]?.trim() && (
+                          <div className="mt-3 border border-line bg-paper-light/70 px-3 py-2">
+                            <p className="text-[12px] font-medium text-ink-mute">你的修改</p>
+                            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-6 text-ink-soft">
+                              {drafts[annotation.id].trim()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </article>
                 ))
               ) : (
@@ -699,13 +760,13 @@ export default function ReportPage() {
           <section className="mt-16">
             <div className="border-b border-line pb-4">
               <p className="eyebrow">
-                <span className="h-px w-6 bg-jade/60" /> 重写示范
+                <span className="h-px w-6 bg-jade/60" /> 段落改写
               </p>
               <h2 className="display mt-2.5 text-[clamp(1.6rem,2.8vw,2.1rem)]">
-                如果这一段重写
+                这一段可以这样改写
               </h2>
               <p className="mt-2 text-[14.5px] text-ink-mute">
-                保留你的原意，只调整结构、搭配与表达精度。不是整篇代写。
+                保留原意，只调整结构、搭配和表达精度。可以先自己改一遍，再对照。
               </p>
             </div>
             <div className="mt-6">
@@ -722,7 +783,7 @@ export default function ReportPage() {
                   <span className="h-px w-6 bg-jade/60" /> 参考范文
                 </p>
                 <h2 className="display mt-2.5 text-[clamp(1.6rem,2.8vw,2.1rem)]">
-                  高分卷会怎么写
+                  同题高分范文
                 </h2>
               </div>
               <button
@@ -761,10 +822,10 @@ export default function ReportPage() {
         <section className="mt-16">
           <div className="border-b border-line pb-4">
             <p className="eyebrow">
-              <span className="h-px w-6 bg-jade/60" /> 提分路径
+              <span className="h-px w-6 bg-jade/60" /> 下一步练习
             </p>
             <h2 className="display mt-2.5 text-[clamp(1.6rem,2.8vw,2.1rem)]">
-              按你现在的水平，先做这几件事
+              这一轮先做这些
             </h2>
           </div>
 
@@ -854,7 +915,7 @@ export default function ReportPage() {
           {!compact && nextSteps.length > 0 && (
             <div className="mt-8 rounded-2xl border border-line bg-white px-5 py-6 sm:px-8">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-                <h3 className="text-[20px] font-medium text-ink">这一轮训练清单</h3>
+                <h3 className="text-[20px] font-medium text-ink">练习清单</h3>
                 <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
                   <Clock3 size={12} /> 约 {totalMinutes} 分钟
                 </span>
@@ -881,7 +942,7 @@ export default function ReportPage() {
           >
             <ArrowLeft size={14} /> 返回写作档案
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void copySummary()}
@@ -889,15 +950,18 @@ export default function ReportPage() {
             >
               <ClipboardCopy size={14} /> 复制摘要
             </button>
+            <Link href="/mistakes" className="btn btn-ghost !px-3.5 !py-2.5 text-[14px]">
+              错题本
+            </Link>
             <Link href="/grade" className="btn btn-primary !px-4 !py-2.5 text-[14px]">
-              <RefreshCw size={14} /> 再批一篇 <ArrowUpRight size={14} />
+              <RefreshCw size={14} /> 批改下一篇 <ArrowUpRight size={14} />
             </Link>
           </div>
         </div>
 
         <p className="mt-6 text-[13px] leading-6 text-ink-mute">
-          报告生成于 {formatDateTime(report.createdAt)} · 由 AI
-          依据考研写作评分标准生成，仅用于训练参考，不能替代正式考试阅卷。
+          报告生成于 {formatDateTime(report.createdAt)} · 依据考研写作评分标准生成，
+          仅用于训练参考，不能替代正式考试阅卷。
         </p>
       </main>
       <SiteFooter />

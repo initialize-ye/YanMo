@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/grade", label: "批改台" },
-  { href: "/report/demo", label: "示例批改" },
+  { href: "/mistakes", label: "错题本" },
   { href: "/history", label: "写作档案" },
   { href: "/settings", label: "设置" }
 ];
@@ -22,9 +22,7 @@ export function SiteHeader() {
         <Logo />
         <nav className="hidden items-center gap-1 md:flex" aria-label="主导航">
           {LINKS.map((link) => {
-            const active =
-              pathname === link.href ||
-              (link.href !== "/report/demo" && pathname.startsWith(`${link.href}/`));
+            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
             return (
               <Link
                 key={link.href}

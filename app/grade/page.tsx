@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SelfCheck } from "@/components/self-check";
 import {
   EXAMS,
   KINDS,
@@ -35,7 +36,7 @@ import {
 } from "@/lib/constants";
 import { getPreset } from "@/lib/ai-presets";
 import { prepareImage, type PreparedImage } from "@/lib/image";
-import { DEMO_ESSAY } from "@/lib/demo";
+import { SAMPLE_ESSAY } from "@/lib/sample";
 import { buildHistoryInsight, cn, countWords, wordRangeFor } from "@/lib/utils";
 import {
   loadAiConfig,
@@ -77,9 +78,9 @@ interface FlowError {
 const FLOW_STEPS = ["作文", "核对", "批改"];
 
 const GRADE_MESSAGES = [
-  "正在对照评分标准逐句分析…",
-  "正在定位真正影响分数的句子…",
-  "正在整理批注、范文与训练任务…"
+  "正在检查语法、拼写和用词…",
+  "正在对照评分标准逐项判断…",
+  "正在整理修改建议和练习清单…"
 ];
 
 function nearestTarget(exam: ExamId, kind: EssayKind, value: number): number {
@@ -332,7 +333,7 @@ export default function GradePage() {
 
   const startRecognition = async () => {
     if (!configured) {
-      setError("还没有接入 AI。请先到设置页填写 API Key，或先查看示例报告。");
+      setError("还没有配置 AI。请先到设置页填写 API Key。");
       return;
     }
     if (!prepared) {
@@ -417,8 +418,8 @@ export default function GradePage() {
     }
   };
 
-  const loadDemoText = () => {
-    setText(DEMO_ESSAY);
+  const loadSampleText = () => {
+    setText(SAMPLE_ESSAY);
     setMode("text");
     setError(null);
     setStage("compose");
@@ -478,12 +479,12 @@ export default function GradePage() {
                   <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 批改台
                 </p>
                 <h1 className="display mt-3 text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight">
-                  把这一篇，交给红笔。
+                  上传作文，逐句批改。
                 </h1>
                 <p className="mt-2 text-[15px] text-ink-mute">
                   {mode === "image"
                     ? "手写照片会先识别成文字，核对后再评分。"
-                    : "直接粘贴文字稿，跳过识别，批改更快。"}
+                    : "直接粘贴文字稿，跳过识别。"}
                 </p>
               </div>
               <StepIndicator current={stageIndex} />
@@ -510,8 +511,8 @@ export default function GradePage() {
               <div className="flex items-start gap-2.5">
                 <Info size={16} className="mt-0.5 shrink-0 text-jade" />
                 <p className="text-[14.5px] leading-6 text-ink-soft">
-                  <strong className="text-ink">还没有接入 AI。</strong>{" "}
-                  填写一个 OpenAI 兼容接口的 Key 就能批改自己的作文，也可以先看一份示例报告。
+                  <strong className="text-ink">还没有配置 AI。</strong>{" "}
+                  填写一个兼容 OpenAI 接口的 Key 就能开始批改，也可以在设置页使用服务器端配置。
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2 pl-6 sm:pl-0">
@@ -519,13 +520,7 @@ export default function GradePage() {
                   href="/settings"
                   className="btn btn-primary !px-3.5 !py-2 text-[14px]"
                 >
-                  接入 AI
-                </Link>
-                <Link
-                  href="/report/demo"
-                  className="text-[14px] font-medium text-ink-mute underline decoration-line underline-offset-4 hover:text-jade"
-                >
-                  看示例
+                  去设置
                 </Link>
               </div>
             </div>
@@ -632,7 +627,7 @@ export default function GradePage() {
                           <span className="grid h-14 w-14 place-items-center rounded-full bg-[#e8f0fe] text-jade">
                             <ScanLine size={25} strokeWidth={1.8} />
                           </span>
-                          <h2 className="display mt-6 text-[24px] text-ink">把作文照片放在这里</h2>
+                          <h2 className="display mt-6 text-[24px] text-ink">上传作文照片</h2>
                           <p className="mt-2 max-w-xs text-[14.5px] leading-6 text-ink-mute">
                             拖入图片、Ctrl+V 粘贴，或选择文件。请在光线均匀处拍摄，字迹尽量清晰。
                           </p>
@@ -692,10 +687,17 @@ export default function GradePage() {
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13.5px] text-ink-mute">
                       <span className="inline-flex items-center gap-1.5">
                         <ScanLine size={13} className="text-jade" />
-                        识别后可以逐字修改，OCR 的误读不会算到你头上
+                        识别后可以逐字修改，识别错误不会被计入批改
                       </span>
-                      <button type="button" onClick={loadDemoText} className="underline decoration-line underline-offset-4 hover:text-jade">
-                        没有照片？填入示例文字
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("text");
+                          setError(null);
+                        }}
+                        className="underline decoration-line underline-offset-4 hover:text-jade"
+                      >
+                        没有照片？改用文字稿
                       </button>
                     </div>
 
@@ -711,14 +713,14 @@ export default function GradePage() {
                     <div className="paper-card p-5 sm:p-6">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">
-                          ESSAY · 直接输入
+                          文字稿 · 直接输入
                         </span>
                         <button
                           type="button"
-                          onClick={loadDemoText}
+                          onClick={loadSampleText}
                           className="text-[13px] font-medium text-jade underline decoration-jade/30 underline-offset-4"
                         >
-                          填入示例
+                          填入样文
                         </button>
                       </div>
                       <textarea
@@ -734,10 +736,8 @@ export default function GradePage() {
                         {words} words
                         <span className="text-ink-mute">· 建议 {minWords}–{maxWords} 词</span>
                       </span>
-                      <button type="button" onClick={loadDemoText} className="text-ink-mute underline decoration-line underline-offset-4 hover:text-jade">
-                        不知道怎么写？载入示例
-                      </button>
                     </div>
+                    <SelfCheck text={text} kind={kind} />
                   </div>
                 )}
 
@@ -757,12 +757,12 @@ export default function GradePage() {
                   >
                     <span className="flex items-center gap-2">
                       {mode === "image" ? <ScanLine size={17} /> : <Settings2 size={17} />}
-                      {mode === "image" ? "识别手写并继续" : "开始 AI 批改"}
+                      {mode === "image" ? "识别手写并继续" : "开始批改"}
                     </span>
                     <ArrowRight size={17} />
                   </button>
-                  <Link href="/report/demo" className="btn btn-ghost !py-3.5 text-[14.5px]">
-                    先看示例批改
+                  <Link href="/mistakes" className="btn btn-ghost !py-3.5 text-[14.5px]">
+                    打开错题本
                   </Link>
                 </div>
                 <p className="mt-3 text-[13px] leading-6 text-ink-mute">
@@ -773,7 +773,7 @@ export default function GradePage() {
               <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
                 <div className="paper-card p-5 sm:p-6">
                   <div className="flex items-center justify-between border-b border-line pb-4">
-                    <h2 className="text-[15.5px] font-medium text-ink">本篇设定</h2>
+                    <h2 className="text-[15.5px] font-medium text-ink">批改设置</h2>
                     <span className="text-[13px] text-ink-mute">满分 {maxScore} 分</span>
                   </div>
 
@@ -1066,7 +1066,7 @@ export default function GradePage() {
                   </FieldLabel>
 
                   <FieldLabel
-                    label="批改风格"
+                    label="批改偏好"
                     hint={selectedPromptPreset.builtin ? "内置提示词" : "自定义预设"}
                   >
                     <select
@@ -1077,7 +1077,7 @@ export default function GradePage() {
                         saveSelectedPromptPresetId(nextId);
                       }}
                       className="field !py-2 text-[13.5px]"
-                      aria-label="选择批改风格"
+                      aria-label="选择批改偏好"
                     >
                       <optgroup label="内置风格">
                         {promptPresets
@@ -1129,7 +1129,7 @@ export default function GradePage() {
                       </span>
                     </div>
                     <p className="mt-2 text-[13px] text-ink-mute">
-                      结合你的水平与历史高频错误生成训练建议
+                      结合目标分、当前水平和常错类型生成练习建议
                     </p>
                   </div>
                 </div>
@@ -1152,10 +1152,10 @@ export default function GradePage() {
                     <span className="h-px w-6 bg-jade/60" /> 第二步 · 核对
                   </p>
                   <h2 className="display mt-2.5 text-[clamp(1.7rem,3vw,2.2rem)]">
-                    先核对文字，再交给阅卷。
+                    核对识别结果
                   </h2>
                   <p className="mt-1.5 text-[14.5px] text-ink-mute">
-                    手写识别难免有个别误读。改到和原文一致，分数才准确。
+                    手写识别可能出现误读，改到与原文一致后再批改。
                   </p>
                 </div>
               </div>
@@ -1251,6 +1251,8 @@ export default function GradePage() {
                       </div>
                     </div>
                   </div>
+
+                  <SelfCheck text={text} kind={kind} />
 
                   {ocr?.warnings && ocr.warnings.length > 0 && (
                     <div className="mt-4 border border-gold/40 bg-gold/[0.05] px-3.5 py-3">
@@ -1491,7 +1493,7 @@ function GradingPanel({
         <div className="relative flex flex-col items-center text-center">
           <div className="seal h-[68px] w-[68px] text-[24px]">批</div>
           <h2 className="display mt-7 text-[28px]">
-            {error ? "这次批改没有完成" : "正在批改这一篇"}
+            {error ? "批改没有完成" : "正在批改"}
           </h2>
           <p className="mt-2 text-[14px] text-ink-mute">
             {examLabel(meta.exam)} · {kindLabel(meta.kind)} · 目标 {meta.targetScore} / {maxScore} 分
@@ -1542,11 +1544,11 @@ function GradingPanel({
                 {[
                   { label: "读取作文与题目", state: "done" },
                   {
-                    label: "对照评分标准逐句分析",
+                    label: "对照评分标准逐句检查",
                     state: elapsed < 22 ? "active" : "done"
                   },
                   {
-                    label: "生成批注、范文与训练任务",
+                    label: "整理修改建议和练习清单",
                     state: elapsed < 22 ? "pending" : "active"
                   }
                 ].map((step, index) => {
@@ -1590,7 +1592,7 @@ function GradingPanel({
               </div>
 
               <p className="marginalia mt-8 text-[14px]">
-                「先把分数丢在哪弄清楚，比多背十个难词更有用。」
+                先看清问题，再决定练什么。
               </p>
             </>
           )}

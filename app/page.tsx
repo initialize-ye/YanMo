@@ -6,18 +6,18 @@ import { SiteFooter } from "@/components/site-footer";
 const STEPS = [
   {
     index: "01",
-    title: "读懂你的手写",
-    text: "手机拍下作文直接上传。识别后先给你逐字核对，避免把 OCR 的误读当成你的错误。"
+    title: "识别手写",
+    text: "拍照上传后先识别成文字。你可以逐字核对，识别错误不会被算作你的错误。"
   },
   {
     index: "02",
-    title: "按阅卷标准给分",
-    text: "区分英语一 / 英语二与大小作文，从任务、语言、词汇、结构四个维度估分，标出真正扣分的句子。"
+    title: "逐句找错",
+    text: "按英语一 / 英语二和大小作文的标准，标出语法、拼写、用词、结构和逻辑问题。"
   },
   {
     index: "03",
-    title: "给出下一步动作",
-    text: "结合你的目标分和历史高频错误，选出这一阶段最划算的提分点，直接告诉下一篇怎么写。"
+    title: "安排练习",
+    text: "根据目标分和常错类型，给出下一轮可以直接做的练习，而不是只给一个分数。"
   }
 ];
 
@@ -25,22 +25,22 @@ const RUBRIC = [
   {
     name: "内容与任务",
     en: "Task",
-    text: "要点是否写全，立场是否清楚，小作文的格式与语气是否正确。"
+    text: "是否回应题目要求，立场是否清楚，小作文格式和语气是否正确。"
   },
   {
     name: "语言准确性",
     en: "Accuracy",
-    text: "时态、主谓一致、非谓语与拼写。先看错误是否影响理解。"
+    text: "时态、主谓一致、非谓语和拼写。先看错误是否影响理解。"
   },
   {
     name: "词汇与句式",
     en: "Lexis",
-    text: "用词是否准确、搭配是否地道，句式有没有变化而非堆砌难词。"
+    text: "用词是否准确，搭配是否自然，句式有没有变化。"
   },
   {
     name: "结构与衔接",
     en: "Structure",
-    text: "段落安排、论点推进与连接手段，读起来是否顺畅。"
+    text: "段落安排、论点推进和连接词使用，读起来是否顺畅。"
   }
 ];
 
@@ -69,24 +69,22 @@ export default function HomePage() {
               </div>
 
               <h1 className="display mt-6 text-[clamp(2.2rem,4.8vw,4rem)] leading-[1.12] text-ink">
-                手写的每一句，
+                先把错误找出来，
                 <br />
-                都值得被
-                <br />
-                <span className="text-jade">认真读懂</span>。
+                <span className="text-jade">再谈怎么提分。</span>
               </h1>
 
               <p className="mt-6 max-w-[32rem] text-[17px] leading-8 text-ink-mute">
-                上传手写作文照片，研墨按英语一、英语二的阅卷标准逐句批改。不只给一个分数，
-                更告诉你分丢在哪、下一篇该怎么写。
+                上传手写作文或粘贴文字稿。研墨按英语一、英语二的评分标准逐句批改，
+                标出语法、拼写、用词和结构问题，并给出下一轮练习。
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link href="/grade" className="btn btn-primary !px-6 !py-3">
                   上传作文，开始批改 <ArrowUpRight size={17} />
                 </Link>
-                <Link href="/report/demo" className="btn btn-ghost !px-5 !py-3">
-                  先看一份示例
+                <Link href="/mistakes" className="btn btn-ghost !px-5 !py-3">
+                  打开错题本
                 </Link>
               </div>
 
@@ -113,7 +111,7 @@ export default function HomePage() {
                       英语一 · 大作文
                     </p>
                     <h2 className="mt-1.5 text-[20px] font-medium text-ink">图画作文 · 合作攀登</h2>
-                    <p className="mt-1 text-[13px] text-ink-mute">批改示例 · 逐句标注</p>
+                    <p className="mt-1 text-[13px] text-ink-mute">批改示意 · 逐句标注</p>
                   </div>
                   <div className="seal h-[60px] w-[60px] shrink-0 rounded-full">
                     <span className="flex flex-col items-center">
@@ -125,7 +123,7 @@ export default function HomePage() {
 
                 <div className="mt-5 flex items-center justify-between">
                   <p className="text-[13px] font-medium text-ink-mute">原文 · 第 1 段</p>
-                  <p className="text-[13px] text-ink-mute">阅卷人视角</p>
+                  <p className="text-[13px] text-ink-mute">修改建议</p>
                 </div>
 
                 <p className="essay-body mt-2.5 !text-[16px] !leading-[1.9]">
@@ -137,7 +135,7 @@ export default function HomePage() {
 
                 <div className="mt-4 border-l-2 border-cinnabar/40 pl-3">
                   <p className="text-[14px] leading-6 text-cinnabar">
-                    两个谓语挤在一句里。改为{" "}
+                    两个谓语挤在一个句子里。可以改成{" "}
                     <span className="font-medium text-jade">depicts two men climbing</span>。
                   </p>
                 </div>
@@ -162,7 +160,7 @@ export default function HomePage() {
                 <div className="mt-5 flex items-start gap-2.5 rounded-lg bg-[#e8f0fe] px-3 py-2.5">
                   <PenLine size={14} className="mt-0.5 shrink-0 text-jade" />
                   <p className="text-[14px] leading-6 text-ink-soft">
-                    <strong className="font-medium text-ink">优先动作</strong> · 一句只留一个谓语，先把最容易拿回的 2 分拿回来。
+                    <strong className="font-medium text-ink">先改这一句</strong> · 一句只留一个谓语，先把最容易拿回的 2 分拿回来。
                   </p>
                 </div>
               </article>
@@ -180,18 +178,18 @@ export default function HomePage() {
           <div className="wrap grid gap-12 py-20 lg:grid-cols-[0.82fr_1.18fr] lg:gap-24 lg:py-28">
             <div>
               <p className="eyebrow">
-                <span className="h-px w-6 bg-jade/60" /> 怎么批
+                <span className="h-px w-6 bg-jade/60" /> 批改方式
               </p>
               <h2 className="display mt-5 text-[clamp(2rem,3.4vw,3rem)] leading-[1.25]">
-                不是把作文重写一遍，
+                不做泛泛的评价，
                 <br />
-                是把问题讲清楚。
+                只标出具体问题。
               </h2>
               <p className="mt-6 max-w-sm text-[16px] leading-7 text-ink-soft">
-                泛泛的“语法有待提高”帮不了考场上的你。研墨只标真实扣分的句子，并解释阅卷人为什么会在这里停下来。
+                “语法有待提高”这类评语很难指导修改。这里会指出具体是哪一句、错在哪里、可以怎么改。
               </p>
               <p className="marginalia mt-8 max-w-xs text-[16.5px] leading-7">
-                「知己知彼，先把分数丢在哪弄清楚。」
+                先改影响理解的地方，再处理表达升级。
               </p>
             </div>
 
@@ -218,27 +216,26 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="wrap py-20 lg:py-28">
+        <section id="rubric" className="wrap scroll-mt-24 py-20 lg:py-28">
           <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
             <div>
               <p className="eyebrow">
                 <span className="h-px w-6 bg-jade/60" /> 评分标准
               </p>
               <h2 className="display mt-5 text-[clamp(2rem,3.4vw,3rem)] leading-[1.24]">
-                先把语法和用词，
+                四个维度，
                 <br />
-                写对再说高分。
+                对应考研写作的评分点。
               </h2>
               <p className="mt-6 max-w-sm text-[16px] leading-7 text-ink-soft">
-                四个维度共同决定分数，但语法、拼写、用词是阅卷人最先看到的部分。
-                先把每一处红线改对，再谈结构与表达升级。
+                内容、语言、词汇、结构都会影响分数。语法和拼写决定阅卷人能不能顺利读懂，结构决定表达的上限。
               </p>
               <div className="mt-8 inline-flex items-baseline gap-3 border-t border-line pt-5">
                 <span className="num text-[44px] leading-none text-ink">4</span>
                 <span className="text-[14px] leading-6 text-ink-mute">
                   个维度
                   <br />
-                  对应考研真实评分点
+                  对应考研评分点
                 </span>
               </div>
             </div>
@@ -276,22 +273,23 @@ export default function HomePage() {
           <div className="wrap relative grid gap-14 py-20 lg:grid-cols-[0.92fr_1.08fr] lg:gap-20 lg:py-28">
             <div>
               <p className="eyebrow">
-                <span className="h-px w-6 bg-jade/60" /> 长期成长
+                <span className="h-px w-6 bg-jade/60" /> 写作档案与错题本
               </p>
               <h2 className="display mt-5 text-[clamp(2.1rem,3.6vw,3.2rem)] leading-[1.24] text-ink">
-                写得越多，
+                每次批改，
                 <br />
-                越懂你的分丢在哪。
+                都会留下记录。
               </h2>
               <p className="mt-6 max-w-md text-[15.5px] leading-7 text-ink-soft">
-                每一篇报告都会进入你的写作档案。高频错误、分数走势、常写题型被记录下来，训练建议随水平变化，而不是每次从零开始。
+                分数、错误类型和修改建议会进入写作档案。错题本把历次错误汇总在一起，
+                可以按类型筛选，也可以遮住答案自己再改一遍。
               </p>
 
               <div className="mt-9 space-y-4">
                 {[
-                  ["追踪高频错误", "同一个语法点连续出现，就会被列为本轮重点。"],
-                  ["看见分数趋势", "按得分率比较不同题型，判断进步是真实的还是题简单。"],
-                  ["安排下一篇训练", "结合目标分与考试时间，只留最值得做的三件事。"]
+                  ["看清高频错误", "同一种错误反复出现时，优先处理它。"],
+                  ["回看修改记录", "每份报告都能重新打开，对照原句和改进句。"],
+                  ["做针对性练习", "从错题本挑几句自己改，比重复写整篇更有效。"]
                 ].map(([title, text], index) => (
                   <div key={title} className="flex gap-4 border-t border-[#c6dafc] pt-4">
                     <span className="num text-[15px] text-jade/70">0{index + 1}</span>
@@ -303,19 +301,27 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <Link
-                href="/history"
-                className="mt-8 inline-flex items-center gap-2 text-[15px] font-medium text-jade transition-colors hover:text-jade-deep"
-              >
-                打开写作档案 <ArrowUpRight size={15} />
-              </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2">
+                <Link
+                  href="/mistakes"
+                  className="inline-flex items-center gap-2 text-[15px] font-medium text-jade transition-colors hover:text-jade-deep"
+                >
+                  打开错题本 <ArrowUpRight size={15} />
+                </Link>
+                <Link
+                  href="/history"
+                  className="inline-flex items-center gap-2 text-[15px] font-medium text-jade transition-colors hover:text-jade-deep"
+                >
+                  写作档案 <ArrowRight size={15} />
+                </Link>
+              </div>
             </div>
 
             <div className="relative">
               <div className="rounded-2xl border border-[#c6dafc] bg-white p-5 shadow-paper sm:p-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[13px] text-ink-mute">得分率趋势</p>
+                    <p className="text-[13px] text-ink-mute">得分率趋势 · 示意</p>
                     <p className="mt-1 text-[20px] font-medium text-ink">最近 6 篇</p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-jade/20 bg-[#e8f0fe] px-2.5 py-1 text-[13px] font-medium text-jade">
@@ -408,14 +414,14 @@ export default function HomePage() {
           <div className="wrap grid items-end gap-10 py-20 sm:grid-cols-[1fr_auto] sm:py-24">
             <div>
               <p className="eyebrow">
-                <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 现在开始
+                <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 开始使用
               </p>
               <h2 className="display mt-4 text-[clamp(2rem,4.4vw,3.5rem)] leading-[1.18]">
                 下一篇，<br className="sm:hidden" />
-                <span className="text-jade">写得更明白一点。</span>
+                <span className="text-jade">先把问题改对。</span>
               </h2>
               <p className="mt-4 max-w-lg text-[15.5px] leading-7 text-ink-soft">
-                上传一张照片，或直接粘贴文字稿。报告自动保存，随时回看自己的变化。
+                上传一张照片，或直接粘贴文字稿。报告保存在本机，随时可以回看。
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:min-w-[210px]">

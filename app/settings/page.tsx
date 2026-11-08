@@ -292,14 +292,13 @@ export default function SettingsPage() {
       <main className="wrap pb-24 pt-8 sm:pt-10">
         <div className="border-b border-line pb-6">
           <p className="eyebrow">
-            <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 设置
+            <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 配置
           </p>
           <h1 className="display mt-3 text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight">
-            把工具，<br className="sm:hidden" />
-            调成适合你的样子。
+            设置
           </h1>
           <p className="mt-2 text-[15px] text-ink-mute">
-            AI 接入决定能不能批改；写作画像决定建议是否贴合你现在的水平。
+            配置 AI 接口、批改风格和个人水平。
           </p>
         </div>
 
@@ -714,8 +713,8 @@ AI_MODEL=qwen-vl-max-latest`}
             <section id="profile" className="mt-14 scroll-mt-24 border-t border-line pt-10">
               <SectionHeading
                 index="03"
-                title="写作画像"
-                desc="批改会参考你的目标与水平，调整建议的难度和优先级。"
+                title="个人水平"
+                desc="批改会根据目标分和当前水平调整练习建议。"
               />
 
               <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -816,7 +815,7 @@ AI_MODEL=qwen-vl-max-latest`}
               </div>
 
               <div className="mt-6 flex items-center justify-between border-t border-line pt-4 text-[13px] text-ink-mute">
-                <span>画像会用在批改建议与训练任务中。</span>
+                <span>这些设置会用于批改建议和练习安排。</span>
                 {profileNote && (
                   <span className="inline-flex items-center gap-1 text-jade">
                     <Check size={12} /> 已保存
@@ -829,7 +828,7 @@ AI_MODEL=qwen-vl-max-latest`}
               <SectionHeading
                 index="04"
                 title="数据与隐私"
-                desc="报告和画像默认保存在这台设备的浏览器中，不会上传到研墨服务器。"
+                desc="报告和个人设置默认保存在这台设备的浏览器中，不会上传到研墨服务器。"
               />
 
               <div className="mt-5 border-t border-line">
@@ -849,7 +848,7 @@ AI_MODEL=qwen-vl-max-latest`}
                   <div>
                     <p className="text-[14.5px] font-medium text-ink">导出备份</p>
                     <p className="mt-0.5 text-[13px] text-ink-mute">
-                      下载 JSON，包含画像与全部报告，不包含 API Key
+                      下载 JSON，包含个人设置与全部报告，不包含 API Key
                     </p>
                   </div>
                   <button type="button" onClick={exportData} className="btn btn-ghost !px-3 !py-1.5 text-[13px]">
@@ -939,7 +938,7 @@ AI_MODEL=qwen-vl-max-latest`}
               {[
                 ["#ai", "AI 接入", "Key / 模型"],
                 ["#prompts", "批改提示词", "风格 / 自定义"],
-                ["#profile", "写作画像", "目标 / 水平"],
+                ["#profile", "个人水平", "目标 / 水平"],
                 ["#data", "数据与隐私", "导出 / 清除"]
               ].map(([href, title, desc]) => (
                 <a
@@ -955,7 +954,7 @@ AI_MODEL=qwen-vl-max-latest`}
 
             <div className="mt-5 flex items-start gap-2 px-1 text-[13px] leading-6 text-ink-mute">
               <Lock size={12} className="mt-0.5 shrink-0" />
-              仅上传你主动提交的作文。AI 生成的报告仅用于训练参考。
+              仅上传你主动提交的作文。报告仅用于训练参考。
             </div>
           </aside>
         </div>
