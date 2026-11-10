@@ -1,12 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, BarChart3, BookOpen, ChevronRight, Info, PenLine } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  BookOpen,
+  Check,
+  ChevronRight,
+  Download,
+  Info,
+  PenLine,
+  Upload,
+  X
+} from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CATEGORY_LABELS, examLabel, kindLabel } from "@/lib/constants";
-import { loadReports } from "@/lib/storage";
+import {
+  applyImport,
+  exportAllData,
+  loadReports,
+  parseImportFile,
+  type ImportPreview
+} from "@/lib/storage";
 import { averagePercent, cn, formatDate, formatScore, scorePercent } from "@/lib/utils";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
 
@@ -21,6 +39,11 @@ interface TrendPoint {
 export default function HistoryPage() {
   const [reports, setReports] = useState<GradeResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
+  const [withProfile, setWithProfile] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -32,6 +55,62 @@ export default function HistoryPage() {
     window.addEventListener("yanmo:reports-changed", refresh);
     return () => window.removeEventListener("yanmo:reports-changed", refresh);
   }, []);
+
+  const exportArchive = () => {
+    const blob = new Blob([exportAllData()], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `yanmo-archive-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setImportError(null);
+    setImportNote(`已导出 ${reports.length} 篇报告，不包含 API Key。`);
+    window.setTimeout(() => setImportNote(null), 4000);
+  };
+
+  const pickFile = () => {
+    setImportError(null);
+    setPreview(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFile = async (file: File) => {
+    try {
+      const raw = await file.text();
+      const result = parseImportFile(raw);
+      if (!result.totalInFile) {
+        setImportError("文件里没有报告记录。");
+        return;
+      }
+      if (!result.newCount && !result.profile) {
+        setImportError(
+          result.duplicateCount
+            ? `文件中的 ${result.duplicateCount} 篇报告都已存在，没有需要导入的内容。`
+            : "文件中的报告格式不正确，无法导入。"
+        );
+        return;
+      }
+      setPreview(result);
+      setWithProfile(Boolean(result.profile));
+    } catch (error) {
+      setPreview(null);
+      setImportError(error instanceof Error ? error.message : "读取文件失败。");
+    }
+  };
+
+  const confirmImport = () => {
+    if (!preview) return;
+    const { added, dropped } = applyImport(preview, { profile: withProfile });
+    setPreview(null);
+    setImportError(null);
+    setImportNote(
+      `已导入 ${added} 篇报告${preview.profile && withProfile ? "，并更新个人设置" : ""}${
+        dropped > 0 ? `；超出 ${dropped} 篇上限的记录未导入` : ""
+      }。`
+    );
+    window.setTimeout(() => setImportNote(null), 5000);
+  };
 
   const issues = useMemo(() => {
     const counts = new Map<ErrorCategory, number>();
@@ -67,14 +146,107 @@ export default function HistoryPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/mistakes" className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]">
-              错题本
-            </Link>
+            <button
+              type="button"
+              onClick={pickFile}
+              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]"
+            >
+              <Upload size={15} /> 导入
+            </button>
+            <button
+              type="button"
+              onClick={exportArchive}
+              disabled={!reports.length}
+              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px] disabled:opacity-50"
+            >
+              <Download size={15} /> 导出
+            </button>
             <Link href="/grade" className="btn btn-primary !px-4 !py-2.5 text-[14.5px]">
               批改新作文 <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          aria-label="选择导入文件"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void handleFile(file);
+          }}
+        />
+
+        {importError && (
+          <div
+            role="alert"
+            className="mt-5 flex items-start justify-between gap-3 border border-cinnabar/35 bg-cinnabar/[0.04] px-4 py-3 text-[14px] leading-6 text-cinnabar"
+          >
+            <span>{importError}</span>
+            <button
+              type="button"
+              onClick={() => setImportError(null)}
+              aria-label="关闭提示"
+              className="shrink-0 p-0.5 hover:opacity-70"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
+        {importNote && (
+          <div className="mt-5 flex items-center gap-2 border border-jade/25 bg-[#e8f0fe] px-4 py-3 text-[14px] text-ink-soft">
+            <Check size={15} className="shrink-0 text-jade" />
+            {importNote}
+          </div>
+        )}
+
+        {preview && (
+          <div className="mt-5 border border-line bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[15px] font-medium text-ink">确认导入</p>
+                <p className="mt-1 text-[14px] leading-6 text-ink-mute">
+                  文件共 {preview.totalInFile} 条记录，可新增 {preview.newCount} 篇
+                  {preview.duplicateCount > 0 ? `，跳过重复 ${preview.duplicateCount} 篇` : ""}
+                  {preview.invalidCount > 0 ? `，忽略无效 ${preview.invalidCount} 条` : ""}。
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={confirmImport} className="btn btn-primary !px-4 !py-2 text-[14px]">
+                  确认导入
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="btn btn-ghost !px-4 !py-2 text-[14px]"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+            {preview.profile && (
+              <label className="mt-4 flex cursor-pointer items-start gap-2.5 border-t border-line pt-3 text-[14px] leading-6 text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={withProfile}
+                  onChange={(event) => setWithProfile(event.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-jade"
+                />
+                <span>
+                  同时导入个人设置（{examLabel(preview.profile.exam)} · 目标 {preview.profile.targetScore} 分）。
+                  勾选后会覆盖本机当前设置。
+                </span>
+              </label>
+            )}
+            <p className="mt-3 text-[13px] leading-5 text-ink-mute">
+              合并规则：按报告 id 去重，本机已有记录不会被修改或删除。
+            </p>
+          </div>
+        )}
 
         {loading ? (
           <div className="mt-8">
@@ -85,12 +257,12 @@ export default function HistoryPage() {
             </div>
           </div>
         ) : reports.length === 0 ? (
-          <EmptyHistory />
+          <EmptyHistory onImport={pickFile} />
         ) : (
           <>
             <div className="mt-7 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
               {[
-                { label: "累计批改", value: `${reports.length}`, unit: "篇", note: "本地记录上限 24 篇" },
+                { label: "累计批改", value: `${reports.length}`, unit: "篇", note: "本地最多保存 100 篇" },
                 { label: "平均得分率", value: `${average}`, unit: "%", note: "按各题型满分折算" },
                 { label: "最高得分率", value: `${best}`, unit: "%", note: latest ? `最近一篇 ${formatScore(latest.score.total)}/${latest.meta.maxScore}` : "" },
                 {
@@ -236,11 +408,15 @@ export default function HistoryPage() {
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-mute">
               <span className="inline-flex items-center gap-1.5">
-                <Info size={12} /> 更换浏览器或清除站点数据会导致档案丢失。
+                <Info size={12} /> 更换浏览器或清除站点数据会导致档案丢失，建议定期导出备份。
               </span>
-              <Link href="/settings" className="font-medium text-ink-mute underline decoration-line underline-offset-4 hover:text-jade">
-                导出 / 管理数据
-              </Link>
+              <button
+                type="button"
+                onClick={exportArchive}
+                className="font-medium text-ink-mute underline decoration-line underline-offset-4 hover:text-jade"
+              >
+                导出备份
+              </button>
             </div>
           </>
         )}
@@ -250,7 +426,7 @@ export default function HistoryPage() {
   );
 }
 
-function EmptyHistory() {
+function EmptyHistory({ onImport }: { onImport: () => void }) {
   return (
     <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_0.85fr] lg:gap-14">
       <div className="paper-card relative px-6 py-10 sm:px-10">
@@ -266,9 +442,9 @@ function EmptyHistory() {
           <Link href="/grade" className="btn btn-primary !px-5 !py-3">
             去批改第一篇 <ArrowRight size={16} />
           </Link>
-          <Link href="/mistakes" className="btn btn-ghost !px-5 !py-3">
-            打开错题本
-          </Link>
+          <button type="button" onClick={onImport} className="btn btn-ghost !px-5 !py-3">
+            <Upload size={16} /> 导入备份
+          </button>
         </div>
         <p className="mt-7 inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
           <BookOpen size={12} /> 不需要注册，记录只保存在本机

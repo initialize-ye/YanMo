@@ -110,13 +110,6 @@ export interface TestResult {
   model: string;
 }
 
-export function apiTest(candidate: Omit<AiConfig, "presetId">): Promise<TestResult> {
-  return post<TestResult>(
-    "/api/ai/test",
-    {},
-    {
-      presetId: "custom",
-      ...candidate
-    }
-  );
+export function apiTest(candidate: AiConfig): Promise<TestResult> {
+  return post<TestResult>("/api/ai/test", {}, candidate);
 }

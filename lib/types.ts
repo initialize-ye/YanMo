@@ -21,8 +21,6 @@ export interface EssayMeta {
   topicPrompt: string;
   targetScore: number;
   level: LevelId;
-  /** 本次使用的批改提示词预设名称，仅用于报告展示 */
-  promptStyle?: string;
 }
 
 export interface DimensionScore {
@@ -100,7 +98,6 @@ export interface UserProfile {
 }
 
 export interface AiConfig {
-  presetId: string;
   baseUrl: string;
   model: string;
   apiKey: string;
@@ -138,8 +135,6 @@ export interface GradeRequestBody {
   text: string;
   meta: EssayMeta;
   history?: HistoryInsight;
-  promptPresetId?: string;
-  customPrompt?: string;
 }
 
 export interface TopicPreset {

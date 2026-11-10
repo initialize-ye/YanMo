@@ -5,39 +5,26 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   Check,
-  Download,
   Eye,
   EyeOff,
   KeyRound,
   Loader2,
   Lock,
-  Plus,
   Server,
   ShieldCheck,
-  Trash2,
-  X
+  Trash2
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import {
-  BUILTIN_PROMPT_PRESETS,
-  DEFAULT_PROMPT_PRESET_ID,
-  type PromptPreset
-} from "@/lib/prompt-presets";
 import { EXAMS, LEVELS, maxScoreFor, targetOptions } from "@/lib/constants";
 import {
   clearAiConfig,
   clearReports,
-  exportAllData,
   loadAiConfig,
   loadProfile,
-  loadPromptPresets,
   loadReports,
-  loadSelectedPromptPresetId,
   saveAiConfig,
-  saveCustomPromptPresets,
-  saveProfile,
-  saveSelectedPromptPresetId
+  saveProfile
 } from "@/lib/storage";
 import { apiTest, fetchAiStatus } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
@@ -67,20 +54,8 @@ export default function SettingsPage() {
   });
   const [profileNote, setProfileNote] = useState(false);
 
-  const [promptPresets, setPromptPresets] = useState<PromptPreset[]>(BUILTIN_PROMPT_PRESETS);
-  const [selectedPromptId, setSelectedPromptId] = useState(DEFAULT_PROMPT_PRESET_ID);
-  const [presetForm, setPresetForm] = useState<{
-    id?: string;
-    name: string;
-    instructions: string;
-  } | null>(null);
-  const [presetError, setPresetError] = useState<string | null>(null);
-  const [deletePresetId, setDeletePresetId] = useState<string | null>(null);
-  const [presetSaved, setPresetSaved] = useState(false);
-
   const [reportCount, setReportCount] = useState(0);
   const [clearConfirm, setClearConfirm] = useState(false);
-  const [exportNote, setExportNote] = useState(false);
 
   useEffect(() => {
     const storedConfig = loadAiConfig();
@@ -92,8 +67,6 @@ export default function SettingsPage() {
     }
     setProfile(loadProfile());
     setReportCount(loadReports().length);
-    setPromptPresets(loadPromptPresets());
-    setSelectedPromptId(loadSelectedPromptPresetId());
     void fetchAiStatus().then(setStatus);
     document.title = "设置 · 研墨 AI";
   }, []);
@@ -102,11 +75,8 @@ export default function SettingsPage() {
   const activeModel = config?.model ?? status?.model ?? null;
   const profileMax = maxScoreFor(profile.exam, "essay");
   const profileTargets = targetOptions(profile.exam, "essay");
-  const customPrompts = promptPresets.filter((item) => !item.builtin);
-  const selectedPromptPreset =
-    promptPresets.find((item) => item.id === selectedPromptId) ?? BUILTIN_PROMPT_PRESETS[0];
 
-  const buildCandidate = (): Omit<AiConfig, "presetId"> | null => {
+  const buildCandidate = (): AiConfig | null => {
     if (!apiKey.trim()) {
       setFormError("请填写 API Key。");
       return null;
@@ -134,7 +104,7 @@ export default function SettingsPage() {
   const persist = (): AiConfig | null => {
     const candidate = buildCandidate();
     if (!candidate) return null;
-    const nextConfig: AiConfig = { presetId: "custom", ...candidate };
+    const nextConfig: AiConfig = candidate;
     saveAiConfig(nextConfig);
     setConfig(nextConfig);
     setSaveNote(true);
@@ -206,80 +176,6 @@ export default function SettingsPage() {
     updateProfile({ exam, targetScore: target });
   };
 
-  const selectPromptPreset = (id: string) => {
-    setSelectedPromptId(id);
-    saveSelectedPromptPresetId(id);
-    setPresetSaved(true);
-    window.setTimeout(() => setPresetSaved(false), 1800);
-  };
-
-  const openPresetEditor = (preset?: PromptPreset) => {
-    setPresetForm(
-      preset
-        ? { id: preset.id, name: preset.name, instructions: preset.instructions }
-        : { name: "", instructions: "" }
-    );
-    setPresetError(null);
-    setDeletePresetId(null);
-    window.setTimeout(() => {
-      document.getElementById("prompt-editor")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 60);
-  };
-
-  const savePromptPreset = () => {
-    if (!presetForm) return;
-    const name = presetForm.name.trim();
-    const instructions = presetForm.instructions.trim();
-    if (name.length < 2) {
-      setPresetError("预设名称至少需要 2 个字符。");
-      return;
-    }
-    if (instructions.length < 10) {
-      setPresetError("提示词至少需要 10 个字符。");
-      return;
-    }
-    const id =
-      presetForm.id ??
-      `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    const description = instructions.slice(0, 80);
-    const nextCustom = presetForm.id
-      ? customPrompts.map((item) =>
-          item.id === id ? { ...item, name, instructions, description } : item
-        )
-      : [...customPrompts, { id, name, instructions, description, builtin: false }];
-    saveCustomPromptPresets(nextCustom);
-    setPromptPresets([...BUILTIN_PROMPT_PRESETS, ...nextCustom]);
-    setSelectedPromptId(id);
-    saveSelectedPromptPresetId(id);
-    setPresetForm(null);
-    setPresetError(null);
-    setPresetSaved(true);
-    window.setTimeout(() => setPresetSaved(false), 1800);
-  };
-
-  const deletePromptPreset = (id: string) => {
-    const nextCustom = customPrompts.filter((item) => item.id !== id);
-    saveCustomPromptPresets(nextCustom);
-    setPromptPresets([...BUILTIN_PROMPT_PRESETS, ...nextCustom]);
-    if (selectedPromptId === id) {
-      setSelectedPromptId(DEFAULT_PROMPT_PRESET_ID);
-      saveSelectedPromptPresetId(DEFAULT_PROMPT_PRESET_ID);
-    }
-    setDeletePresetId(null);
-  };
-
-  const exportData = () => {
-    const blob = new Blob([exportAllData()], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `yanmo-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setExportNote(true);
-    window.setTimeout(() => setExportNote(false), 2200);
-  };
-
   const handleClearReports = () => {
     clearReports();
     setReportCount(0);
@@ -298,7 +194,7 @@ export default function SettingsPage() {
             设置
           </h1>
           <p className="mt-2 text-[15px] text-ink-mute">
-            配置 AI 接口、批改风格和个人水平。
+            配置 AI 接口、个人水平和本机数据。
           </p>
         </div>
 
@@ -509,210 +405,9 @@ AI_MODEL=qwen-vl-max-latest`}
               </details>
             </section>
 
-            <section id="prompts" className="mt-14 scroll-mt-24 border-t border-line pt-10">
-              <SectionHeading
-                index="02"
-                title="批改提示词"
-                desc="选择内置批改风格，或保存自己的提示词预设。自定义要求会追加在基础评分规则之后。"
-              />
-
-              <div className="mt-5 border-t border-line">
-                {promptPresets.map((item) => {
-                  const active = selectedPromptId === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn("border-b border-line", active && "bg-jade/[0.035]")}
-                    >
-                      <div className="flex items-start gap-3 py-4">
-                        <button
-                          type="button"
-                          onClick={() => selectPromptPreset(item.id)}
-                          aria-pressed={active}
-                          className="flex flex-1 items-start gap-3 text-left"
-                        >
-                          <span
-                            className={cn(
-                              "mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full border",
-                              active
-                                ? "border-jade bg-jade text-paper"
-                                : "border-line text-transparent"
-                            )}
-                          >
-                            <Check size={10} />
-                          </span>
-                          <span>
-                            <span className="flex flex-wrap items-center gap-2">
-                              <span className="text-[14.5px] font-medium text-ink">{item.name}</span>
-                              <span className="border border-line px-1 py-0.5 text-[12px] text-ink-mute">
-                                {item.builtin ? "内置" : "自定义"}
-                              </span>
-                              {active && (
-                                <span className="text-[13px] font-medium text-jade">当前</span>
-                              )}
-                            </span>
-                            <span className="mt-1 block text-[13px] leading-6 text-ink-mute">
-                              {item.description}
-                            </span>
-                          </span>
-                        </button>
-                        {!item.builtin && (
-                          <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => openPresetEditor(item)}
-                              className="text-[13px] font-medium text-ink-mute hover:text-jade"
-                            >
-                              修改
-                            </button>
-                            {deletePresetId === item.id ? (
-                              <span className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => deletePromptPreset(item.id)}
-                                  className="text-[13px] font-medium text-cinnabar"
-                                >
-                                  确定删除
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeletePresetId(null)}
-                                  className="text-[13px] text-ink-mute"
-                                >
-                                  取消
-                                </button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setDeletePresetId(item.id)}
-                                aria-label={`删除 ${item.name}`}
-                                className="p-0.5 text-ink-mute hover:text-cinnabar"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {active && item.builtin && item.instructions && (
-                        <details className="pb-3 pl-7">
-                          <summary className="cursor-pointer text-[13px] text-ink-mute hover:text-jade">
-                            查看该风格的附加提示词
-                          </summary>
-                          <p className="mt-1.5 bg-paper/60 px-2.5 py-2 text-[13px] leading-6 text-ink-soft">
-                            {item.instructions}
-                          </p>
-                        </details>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {presetForm ? (
-                <div id="prompt-editor" className="mt-4 border border-line bg-paper-light/60 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[14px] font-medium text-ink">
-                      {presetForm.id ? "编辑自定义预设" : "新建自定义预设"}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPresetForm(null);
-                        setPresetError(null);
-                      }}
-                      aria-label="关闭编辑"
-                      className="p-1 text-ink-mute hover:text-cinnabar"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-
-                  <label className="mt-3 block">
-                    <span className="mb-1.5 block text-[13px] font-medium tracking-[0.12em] text-ink-mute">
-                      预设名称
-                    </span>
-                    <input
-                      value={presetForm.name}
-                      onChange={(event) =>
-                        setPresetForm((form) => (form ? { ...form, name: event.target.value } : form))
-                      }
-                      maxLength={40}
-                      placeholder="例如：我的作文老师风格"
-                      className="field !py-2 text-[14px]"
-                    />
-                  </label>
-
-                  <label className="mt-3 block">
-                    <span className="mb-1.5 block text-[13px] font-medium tracking-[0.12em] text-ink-mute">
-                      附加提示词
-                    </span>
-                    <textarea
-                      value={presetForm.instructions}
-                      onChange={(event) =>
-                        setPresetForm((form) =>
-                          form ? { ...form, instructions: event.target.value } : form
-                        )
-                      }
-                      maxLength={1000}
-                      placeholder="例如：每次批改先列出所有主谓一致错误，解释控制在两句话内。"
-                      className="field min-h-[110px] resize-y !py-2 text-[13.5px] leading-6"
-                    />
-                  </label>
-
-                  <p className="mt-1.5 text-[13px] leading-5 text-ink-mute">
-                    会追加在基础评分规则之后，不能改变 JSON 输出结构；只保存在本机。
-                  </p>
-                  {presetError && (
-                    <p className="mt-2 text-[13px] text-cinnabar">{presetError}</p>
-                  )}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={savePromptPreset}
-                      className="btn btn-primary !px-3.5 !py-2 text-[13px]"
-                    >
-                      保存并设为当前
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPresetForm(null);
-                        setPresetError(null);
-                      }}
-                      className="btn btn-ghost !px-3 !py-2 text-[13px]"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => openPresetEditor()}
-                  className="btn btn-ghost mt-4 !px-3.5 !py-2 text-[13px]"
-                >
-                  <Plus size={13} /> 新建自定义预设
-                </button>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
-                <span>当前：{selectedPromptPreset.name} · 只影响下一次批改</span>
-                {presetSaved && (
-                  <span className="inline-flex items-center gap-1 text-jade">
-                    <Check size={11} /> 已保存
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 text-[13px] leading-6 text-ink-mute">
-                自定义提示词只保存在本机浏览器，批改时发送给 AI；报告只记录预设名称，不保存提示词原文。
-              </p>
-            </section>
-
             <section id="profile" className="mt-14 scroll-mt-24 border-t border-line pt-10">
               <SectionHeading
-                index="03"
+                index="02"
                 title="个人水平"
                 desc="批改会根据目标分和当前水平调整练习建议。"
               />
@@ -826,7 +521,7 @@ AI_MODEL=qwen-vl-max-latest`}
 
             <section id="data" className="mt-14 scroll-mt-24 border-t border-line pt-10">
               <SectionHeading
-                index="04"
+                index="03"
                 title="数据与隐私"
                 desc="报告和个人设置默认保存在这台设备的浏览器中，不会上传到研墨服务器。"
               />
@@ -836,24 +531,12 @@ AI_MODEL=qwen-vl-max-latest`}
                   <div>
                     <p className="text-[14.5px] font-medium text-ink">写作报告</p>
                     <p className="mt-0.5 text-[13px] text-ink-mute">
-                      当前保存 {reportCount} 篇
+                      当前保存 {reportCount} 篇 · 导入 / 导出在写作档案页
                     </p>
                   </div>
                   <Link href="/history" className="btn btn-ghost !px-3 !py-1.5 text-[13px]">
                     查看档案 <ArrowUpRight size={12} />
                   </Link>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-4">
-                  <div>
-                    <p className="text-[14.5px] font-medium text-ink">导出备份</p>
-                    <p className="mt-0.5 text-[13px] text-ink-mute">
-                      下载 JSON，包含个人设置与全部报告，不包含 API Key
-                    </p>
-                  </div>
-                  <button type="button" onClick={exportData} className="btn btn-ghost !px-3 !py-1.5 text-[13px]">
-                    <Download size={12} /> {exportNote ? "已导出" : "导出 JSON"}
-                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-4">
@@ -917,12 +600,6 @@ AI_MODEL=qwen-vl-max-latest`}
                     {activeModel ?? "—"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[13.5px] text-ink-mute">批改风格</span>
-                  <span className="max-w-[150px] truncate text-[13px] text-ink-soft">
-                    {selectedPromptPreset.name}
-                  </span>
-                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[13.5px] text-ink-mute">报告</span>
                   <span className="text-[13.5px] text-ink-soft">{reportCount} 篇</span>
@@ -937,9 +614,8 @@ AI_MODEL=qwen-vl-max-latest`}
             <nav className="mt-5 border-t border-line pt-4" aria-label="设置目录">
               {[
                 ["#ai", "AI 接入", "Key / 模型"],
-                ["#prompts", "批改提示词", "风格 / 自定义"],
                 ["#profile", "个人水平", "目标 / 水平"],
-                ["#data", "数据与隐私", "导出 / 清除"]
+                ["#data", "数据与隐私", "备份 / 清除"]
               ].map(([href, title, desc]) => (
                 <a
                   key={href}

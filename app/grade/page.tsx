@@ -34,26 +34,17 @@ import {
   maxScoreFor,
   targetOptions
 } from "@/lib/constants";
-import { getPreset } from "@/lib/ai-presets";
 import { prepareImage, type PreparedImage } from "@/lib/image";
 import { SAMPLE_ESSAY } from "@/lib/sample";
 import { buildHistoryInsight, cn, countWords, wordRangeFor } from "@/lib/utils";
 import {
   loadAiConfig,
   loadProfile,
-  loadPromptPresets,
   loadReports,
-  loadSelectedPromptPresetId,
   saveProfile,
-  saveReport,
-  saveSelectedPromptPresetId
+  saveReport
 } from "@/lib/storage";
 import { apiGrade, apiOcr, apiTopic, fetchAiStatus } from "@/lib/client-api";
-import {
-  BUILTIN_PROMPT_PRESETS,
-  DEFAULT_PROMPT_PRESET_ID,
-  type PromptPreset
-} from "@/lib/prompt-presets";
 import type {
   AiConfig,
   AiStatus,
@@ -126,9 +117,6 @@ export default function GradePage() {
   const [aiConfig, setAiConfig] = useState<AiConfig | null>(null);
   const [status, setStatus] = useState<AiStatus | null>(null);
 
-  const [promptPresets, setPromptPresets] = useState<PromptPreset[]>(BUILTIN_PROMPT_PRESETS);
-  const [promptPresetId, setPromptPresetId] = useState(DEFAULT_PROMPT_PRESET_ID);
-
   const [ocr, setOcr] = useState<OcrResult | null>(null);
   const [ocrState, setOcrState] = useState<OcrState>("idle");
   const [ocrError, setOcrError] = useState<string | null>(null);
@@ -150,8 +138,6 @@ export default function GradePage() {
     setTarget(nearestTarget(storedProfile.exam, "essay", storedProfile.targetScore));
     setTopicId(TOPICS[storedProfile.exam].essay[0].id);
     setAiConfig(loadAiConfig());
-    setPromptPresets(loadPromptPresets());
-    setPromptPresetId(loadSelectedPromptPresetId());
     void fetchAiStatus().then(setStatus);
   }, []);
 
@@ -177,11 +163,7 @@ export default function GradePage() {
   const words = countWords(text);
   const [minWords, maxWords] = wordRangeFor(kind);
 
-  const preset = aiConfig ? getPreset(aiConfig.presetId) : null;
-  const visionBlocked = Boolean(preset && !preset.vision);
   const configured = Boolean(aiConfig?.apiKey) || Boolean(status?.serverConfigured);
-  const selectedPromptPreset =
-    promptPresets.find((item) => item.id === promptPresetId) ?? BUILTIN_PROMPT_PRESETS[0];
 
   const meta: EssayMeta = {
     exam,
@@ -191,8 +173,7 @@ export default function GradePage() {
       : topic?.title ?? topicList[0].title,
     topicPrompt: isCustom ? customPrompt.trim() : topic?.prompt ?? topicList[0].prompt,
     targetScore: safeTarget,
-    level,
-    promptStyle: selectedPromptPreset.name
+    level
   };
 
   const changeExam = (next: ExamId) => {
@@ -262,10 +243,6 @@ export default function GradePage() {
       setTopicError("识别题目图片需要先接入 AI。请到设置页填写 Key，或在下方手动输入题目。");
       return;
     }
-    if (visionBlocked) {
-      setTopicError("当前配置的模型不支持图片输入，请换成支持视觉的模型，或手动输入题目。");
-      return;
-    }
     try {
       const image = await prepareImage(selected);
       setTopicImage(image);
@@ -283,10 +260,6 @@ export default function GradePage() {
     setTopicError(null);
     if (!configured) {
       setTopicError("识别题目图片需要先接入 AI。请到设置页填写 Key，或在下方手动输入题目。");
-      return;
-    }
-    if (visionBlocked) {
-      setTopicError("当前配置的模型不支持图片输入，请换成支持视觉的模型，或手动输入题目。");
       return;
     }
     topicInputRef.current?.click();
@@ -340,10 +313,6 @@ export default function GradePage() {
       setError("请先选择一张作文照片。");
       return;
     }
-    if (visionBlocked) {
-      setError("当前配置的模型不支持图片输入，请改用文字稿，或在设置中换成视觉模型。");
-      return;
-    }
     setStage("recognize");
     setOcr(null);
     setOcrState("running");
@@ -392,9 +361,7 @@ export default function GradePage() {
     const request: GradeRequestBody = {
       text: content.trim(),
       meta,
-      history: buildHistoryInsight(loadReports()),
-      promptPresetId: selectedPromptPreset.id,
-      customPrompt: selectedPromptPreset.builtin ? "" : selectedPromptPreset.instructions
+      history: buildHistoryInsight(loadReports())
     };
 
     try {
@@ -533,10 +500,6 @@ export default function GradePage() {
                   <ModeTab
                     active={mode === "image"}
                     onClick={() => {
-                      if (visionBlocked) {
-                        setError("当前模型不支持图片输入，请改用文字稿。");
-                        return;
-                      }
                       setMode("image");
                       setError(null);
                     }}
@@ -701,12 +664,6 @@ export default function GradePage() {
                       </button>
                     </div>
 
-                    {visionBlocked && (
-                      <div className="mt-4 flex items-start gap-2 border border-gold/40 bg-gold/[0.05] px-3 py-2.5 text-[14px] leading-6 text-ink-soft">
-                        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-gold" />
-                        当前配置的模型不支持图片输入。请改用文字稿，或在设置中换成视觉模型。
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="mt-5">
@@ -1063,52 +1020,6 @@ export default function GradePage() {
                         );
                       })}
                     </div>
-                  </FieldLabel>
-
-                  <FieldLabel
-                    label="批改偏好"
-                    hint={selectedPromptPreset.builtin ? "内置提示词" : "自定义预设"}
-                  >
-                    <select
-                      value={promptPresetId}
-                      onChange={(event) => {
-                        const nextId = event.target.value;
-                        setPromptPresetId(nextId);
-                        saveSelectedPromptPresetId(nextId);
-                      }}
-                      className="field !py-2 text-[13.5px]"
-                      aria-label="选择批改偏好"
-                    >
-                      <optgroup label="内置风格">
-                        {promptPresets
-                          .filter((item) => item.builtin)
-                          .map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                      {promptPresets.some((item) => !item.builtin) && (
-                        <optgroup label="我的预设">
-                          {promptPresets
-                            .filter((item) => !item.builtin)
-                            .map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    <p className="mt-1.5 text-[13px] leading-5 text-ink-mute">
-                      {selectedPromptPreset.description}
-                    </p>
-                    <Link
-                      href="/settings#prompts"
-                      className="mt-1 inline-flex items-center gap-1 text-[13px] font-medium text-ink-mute hover:text-jade"
-                    >
-                      管理提示词预设 <ArrowRight size={10} />
-                    </Link>
                   </FieldLabel>
 
                   <div className="mt-5 border-t border-line pt-4">

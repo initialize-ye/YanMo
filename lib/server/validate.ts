@@ -98,10 +98,6 @@ export function parseGradeBody(body: unknown): GradeRequestBody {
       : "未命名作文题目";
   const topicPrompt =
     typeof metaRaw.topicPrompt === "string" ? metaRaw.topicPrompt.trim().slice(0, 1200) : "";
-  const promptStyle =
-    typeof metaRaw.promptStyle === "string" && metaRaw.promptStyle.trim()
-      ? metaRaw.promptStyle.trim().slice(0, 60)
-      : undefined;
 
   const meta: EssayMeta = {
     exam,
@@ -109,24 +105,12 @@ export function parseGradeBody(body: unknown): GradeRequestBody {
     topicTitle,
     topicPrompt,
     targetScore,
-    level,
-    ...(promptStyle ? { promptStyle } : {})
+    level
   };
-
-  const promptPresetId =
-    typeof record.promptPresetId === "string" && record.promptPresetId.trim()
-      ? record.promptPresetId.trim().slice(0, 80)
-      : undefined;
-  const customPrompt =
-    typeof record.customPrompt === "string" && record.customPrompt.trim()
-      ? record.customPrompt.trim().slice(0, 1200)
-      : undefined;
 
   return {
     text: essayText,
     meta,
-    history: parseHistory(record.history),
-    promptPresetId,
-    customPrompt
+    history: parseHistory(record.history)
   };
 }

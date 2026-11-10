@@ -282,12 +282,6 @@ export default function ReportPage() {
               <span>{stats.words} 词</span>
               <span className="text-ink-mute/50">·</span>
               <span>{stats.paragraphs} 段</span>
-              {meta.promptStyle && (
-                <>
-                  <span className="text-ink-mute/50">·</span>
-                  <span className="chip !py-0.5">{meta.promptStyle}</span>
-                </>
-              )}
               <span className="text-jade">已存入本机</span>
             </div>
             <h1 className="display mt-2 text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight">

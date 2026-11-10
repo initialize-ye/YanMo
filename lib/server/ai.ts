@@ -410,9 +410,7 @@ export async function gradeEssay(ai: ResolvedAi, body: GradeRequestBody): Promis
   const prompt = buildGradePrompt({
     text: body.text,
     meta: body.meta,
-    history: body.history,
-    promptPresetId: body.promptPresetId,
-    customPrompt: body.customPrompt
+    history: body.history
   });
 
   const content = await callChat(ai, {

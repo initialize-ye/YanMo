@@ -2,19 +2,12 @@
 
 import type { AiConfig, GradeResult, UserProfile } from "./types";
 import { DEFAULT_PROFILE } from "./constants";
-import {
-  BUILTIN_PROMPT_PRESETS,
-  DEFAULT_PROMPT_PRESET_ID,
-  type PromptPreset
-} from "./prompt-presets";
 
 const REPORTS_KEY = "yanmo.reports.v1";
 const PROFILE_KEY = "yanmo.profile.v1";
 const AI_KEY = "yanmo.ai.v1";
-const PROMPTS_KEY = "yanmo.promptPresets.v1";
-const SELECTED_PROMPT_KEY = "yanmo.promptPreset.v1";
 const COMPACT_KEY = "yanmo.compact.v1";
-const MAX_REPORTS = 24;
+const MAX_REPORTS = 100;
 
 function hasStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -91,10 +84,9 @@ export function saveProfile(profile: UserProfile): void {
 }
 
 export function loadAiConfig(): AiConfig | null {
-  const config = readJson<Partial<AiConfig>>(AI_KEY);
+  const config = readJson<Partial<AiConfig> & { presetId?: string }>(AI_KEY);
   if (!config || !config.apiKey || !config.baseUrl || !config.model) return null;
   return {
-    presetId: config.presetId ?? "custom",
     baseUrl: config.baseUrl,
     model: config.model,
     apiKey: config.apiKey
@@ -108,63 +100,6 @@ export function saveAiConfig(config: AiConfig): void {
 export function clearAiConfig(): void {
   if (!hasStorage()) return;
   window.localStorage.removeItem(AI_KEY);
-}
-
-export function loadCustomPromptPresets(): PromptPreset[] {
-  const stored = readJson<Partial<PromptPreset>[]>(PROMPTS_KEY);
-  if (!Array.isArray(stored)) return [];
-  return stored
-    .filter(
-      (item): item is Partial<PromptPreset> =>
-        Boolean(item) &&
-        typeof item.id === "string" &&
-        typeof item.name === "string" &&
-        typeof item.instructions === "string" &&
-        !BUILTIN_PROMPT_PRESETS.some((builtin) => builtin.id === item.id)
-    )
-    .slice(0, 20)
-    .map((item) => ({
-      id: item.id as string,
-      name: (item.name as string).slice(0, 40),
-      description:
-        typeof item.description === "string" && item.description.trim()
-          ? item.description.slice(0, 120)
-          : (item.instructions as string).slice(0, 80),
-      instructions: (item.instructions as string).slice(0, 1200),
-      builtin: false
-    }));
-}
-
-export function saveCustomPromptPresets(presets: PromptPreset[]): void {
-  writeJson(
-    PROMPTS_KEY,
-    presets
-      .filter((preset) => !preset.builtin)
-      .slice(0, 20)
-      .map((preset) => ({
-        id: preset.id,
-        name: preset.name,
-        description: preset.description,
-        instructions: preset.instructions
-      }))
-  );
-}
-
-export function loadPromptPresets(): PromptPreset[] {
-  return [...BUILTIN_PROMPT_PRESETS, ...loadCustomPromptPresets()];
-}
-
-export function loadSelectedPromptPresetId(): string {
-  const stored = readJson<string>(SELECTED_PROMPT_KEY);
-  const presets = loadPromptPresets();
-  if (typeof stored === "string" && presets.some((preset) => preset.id === stored)) {
-    return stored;
-  }
-  return DEFAULT_PROMPT_PRESET_ID;
-}
-
-export function saveSelectedPromptPresetId(id: string): void {
-  writeJson(SELECTED_PROMPT_KEY, id);
 }
 
 export function loadCompactMode(): boolean {
@@ -188,4 +123,120 @@ export function exportAllData(): string {
     null,
     2
   );
+}
+
+export interface ImportPreview {
+  reports: GradeResult[];
+  profile: UserProfile | null;
+  totalInFile: number;
+  newCount: number;
+  duplicateCount: number;
+  invalidCount: number;
+}
+
+function isGradeResult(value: unknown): value is GradeResult {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  const meta = record.meta as Record<string, unknown> | undefined;
+  const score = record.score as Record<string, unknown> | undefined;
+  return (
+    typeof record.id === "string" &&
+    record.id.length > 0 &&
+    typeof record.createdAt === "string" &&
+    typeof record.text === "string" &&
+    Boolean(meta) &&
+    typeof meta?.exam === "string" &&
+    typeof meta?.kind === "string" &&
+    Boolean(score) &&
+    typeof score?.total === "number"
+  );
+}
+
+/** 解析导出文件，兼容完整导出对象和纯报告数组两种格式。 */
+export function parseImportFile(raw: string): ImportPreview {
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error("文件不是有效的 JSON，请选择研墨导出的备份文件。");
+  }
+
+  const fileReports = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray((data as { reports?: unknown }).reports)
+      ? (data as { reports: unknown[] }).reports
+      : null;
+
+  if (!fileReports) {
+    throw new Error("文件里没有找到报告数据。请选择研墨导出的 JSON 备份。");
+  }
+
+  const valid: GradeResult[] = [];
+  let invalidCount = 0;
+  fileReports.forEach((item) => {
+    if (isGradeResult(item)) {
+      valid.push(item);
+    } else {
+      invalidCount += 1;
+    }
+  });
+
+  const existingIds = new Set(loadReports().map((report) => report.id));
+  const seen = new Set<string>();
+  const unique: GradeResult[] = [];
+  let duplicateCount = 0;
+  valid.forEach((report) => {
+    if (existingIds.has(report.id) || seen.has(report.id)) {
+      duplicateCount += 1;
+      return;
+    }
+    seen.add(report.id);
+    unique.push(report);
+  });
+
+  let profile: UserProfile | null = null;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const candidate = (data as { profile?: unknown }).profile;
+    if (candidate && typeof candidate === "object") {
+      const record = candidate as Partial<UserProfile>;
+      if (record.exam === "english1" || record.exam === "english2") {
+        profile = { ...DEFAULT_PROFILE, ...record };
+      }
+    }
+  }
+
+  return {
+    reports: unique,
+    profile,
+    totalInFile: fileReports.length,
+    newCount: unique.length,
+    duplicateCount,
+    invalidCount
+  };
+}
+
+/** 把预览中的报告合并进本机档案，返回实际写入数量。 */
+export function applyImport(
+  preview: ImportPreview,
+  options: { profile?: boolean } = {}
+): { added: number; dropped: number } {
+  let added = 0;
+  let dropped = 0;
+  if (preview.reports.length) {
+    const merged = [...loadReports(), ...preview.reports].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const kept = merged.slice(0, MAX_REPORTS);
+    const importedIds = new Set(preview.reports.map((report) => report.id));
+    added = kept.filter((report) => importedIds.has(report.id)).length;
+    dropped = preview.reports.length - added;
+    writeJson(REPORTS_KEY, kept);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("yanmo:reports-changed"));
+    }
+  }
+  if (options.profile && preview.profile) {
+    saveProfile(preview.profile);
+  }
+  return { added, dropped };
 }

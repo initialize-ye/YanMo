@@ -1,5 +1,4 @@
 import { CATEGORY_LABELS, examLabel, kindLabel, levelLabel, maxScoreFor } from "../constants";
-import { getBuiltinPromptPreset } from "../prompt-presets";
 import type { EssayMeta, HistoryInsight } from "../types";
 
 export const OCR_SYSTEM = `你是一名手写英文转写专家。你的唯一任务，是把图片中的手写英文原样转写为文字。
@@ -80,20 +79,11 @@ export function buildGradePrompt(input: {
   text: string;
   meta: EssayMeta;
   history?: HistoryInsight;
-  promptPresetId?: string;
-  customPrompt?: string;
 }): string {
-  const { text, meta, history, promptPresetId, customPrompt } = input;
+  const { text, meta, history } = input;
   const maxScore = maxScoreFor(meta.exam, meta.kind);
   const target = Math.min(meta.targetScore, maxScore);
   const wordHint = meta.kind === "letter" ? "90—130 词" : "150—220 词";
-  const builtinPreset = getBuiltinPromptPreset(promptPresetId);
-  const extraInstructions = builtinPreset
-    ? builtinPreset.instructions
-    : (customPrompt ?? "").trim();
-  const extraBlock = extraInstructions
-    ? `\n## 本次批改附加要求\n以下要求优先于上面的批改原则和数量建议，但不得改变 JSON 字段、分值范围和输出格式；如果与格式要求冲突，一律以 JSON 格式为准。\n${extraInstructions}\n`
-    : "";
 
   return `你是一位有十五年经验的考研英语阅卷组组长，同时是学生的写作教练。你的任务不是把作文改得面目全非，而是按考研真实阅卷标准打分，逐句找出语法、拼写、用词错误，同时指出最值得改的高层问题，并给学生一条这个阶段最划算的提分路径。
 
@@ -143,7 +133,7 @@ export function buildGradePrompt(input: {
 8. suggestions 给 2—3 条本轮提分建议，按 impact 从高到低排序；每条包含 why（为什么这条最值钱）和 action（下一篇具体怎么做）。
 9. nextSteps 给 2—3 个可在 30 分钟内完成的训练动作，minutes 为整数。
 10. 全部中文说明使用简体中文；英文原文与修改示例保持英文。不要输出 Markdown，只输出 JSON。
-${extraBlock}
+
 ## 学生原文
 """
 ${text}
