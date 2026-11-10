@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PWARegister } from "@/components/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,7 +11,21 @@ export const metadata: Metadata = {
     "上传手写英语作文或粘贴文字稿，按考研英语一、英语二标准逐句批改，标出错误并给出练习建议。",
   keywords: ["考研英语", "英语作文批改", "手写识别", "AI 批改", "英语写作"],
   applicationName: "研墨 AI",
-  authors: [{ name: "研墨 AI" }]
+  authors: [{ name: "研墨 AI" }],
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }]
+  },
+  appleWebApp: {
+    capable: true,
+    title: "研墨 AI",
+    statusBarStyle: "default"
+  },
+  formatDetection: { telephone: false }
 };
 
 export const viewport: Viewport = {
@@ -23,7 +38,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        {children}
+        <PWARegister />
+      </body>
     </html>
   );
 }

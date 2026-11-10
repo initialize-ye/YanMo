@@ -33,7 +33,7 @@
 
 ## 快速开始
 
-普通用户推荐使用 **Windows 桌面版** 或 **绿色便携版**，双击即可，不需要安装 Node.js。
+**Windows** 用户推荐桌面版 exe；**Android** 用户使用 PWA，或按文档打包成 TWA APK。
 开发者或想修改代码时，使用源码启动方式（需要 Node.js 18.17+，推荐 20+）。
 
 ### 方式一：Windows 桌面版（Electron，推荐）
@@ -47,24 +47,8 @@
 - 程序内部会启动一个只监听 `127.0.0.1:38217` 的本地服务，再加载应用界面。
 - 报告和设置在 `%APPDATA%\YanMo` 中持久保存；升级程序不会丢失。
 - 未签名的 exe 首次运行可能出现 SmartScreen 提示，点击「更多信息 → 仍要运行」即可。
-- 桌面版和绿色包的界面、功能、数据格式一致，但两者使用各自独立的本地数据目录。
 
-### 方式二：绿色便携版（Windows，免安装）
-
-1. 获取 `yanmo-portable-win64.zip`：
-   - 直接下载：[GitHub Releases](https://github.com/initialize-ye/YanMo/releases/latest)；
-   - 或由维护者运行 `npm run build:portable` 生成，文件位于 `dist/yanmo-portable-win64.zip`；
-   - 或在 GitHub Actions 中手动运行 **Build Windows Packages** 工作流，下载生成的 Artifact。
-2. 把 zip 完整解压到任意目录（例如 `D:\YanMo`）。
-3. 双击 **`启动研墨.cmd`**。
-4. 浏览器自动打开；首次使用在页面「设置」里填写 AI 接口信息即可。
-
-绿色包已内置 Node.js 运行环境，不需要安装任何软件。作文和报告仍只保存在本机浏览器中。
-
-> 如果 Windows 提示“Windows 已保护你的电脑”，点击「更多信息 → 仍要运行」。
-> 这是未签名的 `node.exe` 触发的 SmartScreen 提示，不是程序损坏。
-
-### 方式三：双击启动（Windows，开发模式）
+### 方式二：双击启动（Windows，开发模式）
 
 适合已安装 Node.js、需要修改代码的用户。直接双击项目根目录的 **`启动项目.cmd`**（或 `启动项目.ps1`）。
 
@@ -79,7 +63,7 @@ PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
 PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001 -NoBrowser
 ```
 
-### 方式四：手动启动
+### 方式三：手动启动
 
 ```powershell
 npm install
@@ -87,6 +71,16 @@ npm run dev
 ```
 
 打开 http://localhost:3000。
+
+### Android / PWA
+
+Android 用户不需要安装 Node.js：
+
+1. 用 Chrome 打开你的 HTTPS 部署地址。
+2. 在 Chrome 菜单中选择「添加到主屏幕」，即可像应用一样使用。
+3. 如需生成可安装的 `apk`，按 [Android PWA / TWA 打包说明](docs/android.md) 使用 PWABuilder 或 Bubblewrap。
+
+TWA APK 本质是加载线上网页的独立窗口，体积小；网页更新后不需要重新安装 APK。部署地址必须支持 HTTPS。
 
 ### 打包 / 分发
 
@@ -113,22 +107,7 @@ dist-electron/YanMo-<version>-win64.exe
 
 桌面版固定使用本机端口 `38217`，只监听 `127.0.0.1`；数据保存在 `%APPDATA%\YanMo`。
 
-**绿色便携版（Windows，免安装）**
-
-维护者执行：
-
-```powershell
-npm run build:portable
-```
-
-脚本会：
-
-1. 使用 Next.js standalone 模式构建；
-2. 优先下载 Windows x64 便携版 Node.js 并打包进 `runtime/`；下载失败时自动使用本机 Node.js；
-3. 复制静态资源、启动器和使用说明；
-4. 生成 `dist/yanmo-portable-win64.zip`（zip 内含顶层文件夹，解压后不会散落）。
-
-GitHub Actions 中提供了 **Build Windows Packages** 工作流，可手动运行并下载桌面版 exe 和绿色包 Artifact；推送 `v*` 标签时也会自动附加到 Release。
+GitHub Actions 中提供了 **Build Windows Exe** 工作流，可手动运行并下载桌面版 exe；推送 `v*` 标签时也会自动附加到 Release。
 
 ## 接入 AI
 
@@ -229,6 +208,7 @@ app/
   api/grade/route.ts      文字 → 批改报告
   api/ai/test/route.ts    测试 AI 连接
   api/status/route.ts     查询服务端是否配置 AI
+  manifest.ts             PWA 安装清单
   grade/page.tsx          批改流程
   report/[id]/page.tsx    报告页
   mistakes/page.tsx       错题本
@@ -243,9 +223,13 @@ electron/
 build/
   icon.ico                应用图标
 scripts/
-  build-portable.ps1      绿色便携包构建
   prepare-standalone.mjs  复制静态资源到 standalone
   after-pack.cjs          把服务端 node_modules 补进 Electron 包
+public/
+  icons/                  PWA 图标
+  sw.js                   Service Worker
+docs/
+  android.md              Android PWA / TWA 打包说明
 electron-builder.yml      Windows exe 打包配置
 lib/
   server/                 仅服务端：提示词、AI 调用、校验
@@ -260,10 +244,10 @@ lib/
 ## 数据与隐私
 
 - 报告、个人水平设置和 AI 配置默认保存在浏览器 localStorage，不会写入数据库。
-- Windows 桌面版使用 Electron 的持久化存储，数据位于 `%APPDATA%\YanMo`；绿色包和源码版使用浏览器 localStorage。
+- Windows 桌面版使用 Electron 的持久化存储，数据位于 `%APPDATA%\YanMo`；PWA 和源码版使用浏览器 localStorage。
 - 图片只在识别时上传到你配置的 AI 服务；研墨不做对象存储，也不保留原图。
 - 报告最多保留 100 篇；可在写作档案页导入 / 导出 JSON 备份，或在设置页清除全部报告。
-- 绿色包/浏览器版清除站点数据、更换浏览器或无痕模式会导致档案丢失；桌面版不要手动删除 `%APPDATA%\YanMo`。
+- PWA/浏览器版清除站点数据、更换浏览器或无痕模式会导致档案丢失；桌面版不要手动删除 `%APPDATA%\YanMo`。
 
 ## 开发脚本
 

@@ -1,6 +1,6 @@
 {
   "name": "yanmo-ai",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "private": true,
   "description": "考研英语手写作文批改工具",
   "author": "YanMo",
@@ -10,7 +10,6 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "build:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable.ps1",
     "prepare:standalone": "node scripts/prepare-standalone.mjs",
     "electron:dev": "electron .",
     "build:exe": "npm run build && npm run prepare:standalone && electron-builder --win portable --config electron-builder.yml",
