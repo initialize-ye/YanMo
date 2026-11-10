@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Settings2 } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,20 @@ const LINKS = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <header className="print-hide sticky top-0 z-40 border-b border-line/80 bg-white/95 backdrop-blur">
@@ -27,6 +42,7 @@ export function SiteHeader() {
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative rounded-full px-4 py-2.5 text-[15px] font-medium transition-colors",
                   active ? "text-jade" : "text-ink-mute hover:bg-paper-deep hover:text-ink"
@@ -44,18 +60,59 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="flex items-center gap-1">
-          <Link
-            href="/settings"
-            aria-label="设置"
+          <button
+            type="button"
+            aria-label={open ? "关闭菜单" : "打开菜单"}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((value) => !value)}
             className="grid h-11 w-11 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink md:hidden"
           >
-            <Settings2 size={20} />
-          </Link>
+            {open ? <X size={21} /> : <Menu size={21} />}
+          </button>
           <Link href="/grade" className="btn btn-primary !px-5 !py-2.5 text-[14px]">
             批改一篇 <ArrowUpRight size={16} />
           </Link>
         </div>
       </div>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="关闭菜单"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 top-[68px] z-30 bg-ink/10 md:hidden"
+          />
+          <nav
+            id="mobile-nav"
+            aria-label="移动端主导航"
+            className="absolute inset-x-0 top-full z-40 border-b border-line bg-white px-4 py-3 shadow-lift md:hidden"
+          >
+            <div className="mx-auto flex max-w-[1200px] flex-col gap-1">
+              {LINKS.map((link) => {
+                const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition-colors",
+                      active
+                        ? "bg-[#e8f0fe] text-jade"
+                        : "text-ink-soft hover:bg-paper-light hover:text-ink"
+                    )}
+                  >
+                    {link.label}
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-jade" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </>
+      )}
     </header>
   );
 }

@@ -1,12 +1,20 @@
 "use client";
 
-import type { AiConfig, GradeResult, UserProfile } from "./types";
+import type {
+  AiConfig,
+  EssayKind,
+  ExamId,
+  GradeResult,
+  LevelId,
+  UserProfile
+} from "./types";
 import { DEFAULT_PROFILE } from "./constants";
 
 const REPORTS_KEY = "yanmo.reports.v1";
 const PROFILE_KEY = "yanmo.profile.v1";
 const AI_KEY = "yanmo.ai.v1";
 const COMPACT_KEY = "yanmo.compact.v1";
+const DRAFT_KEY = "yanmo.draft.v1";
 export const MAX_REPORTS = 100;
 
 function hasStorage(): boolean {
@@ -100,6 +108,47 @@ export function saveAiConfig(config: AiConfig): void {
 export function clearAiConfig(): void {
   if (!hasStorage()) return;
   window.localStorage.removeItem(AI_KEY);
+}
+
+export interface GradeDraft {
+  text: string;
+  mode: "image" | "text";
+  exam: ExamId;
+  kind: EssayKind;
+  topicId: string;
+  customTitle: string;
+  customPrompt: string;
+  target: number;
+  level: LevelId;
+  updatedAt: string;
+}
+
+export function loadDraft(): GradeDraft | null {
+  const draft = readJson<Partial<GradeDraft>>(DRAFT_KEY);
+  if (!draft || typeof draft.text !== "string") return null;
+  return {
+    text: draft.text.slice(0, 20000),
+    mode: draft.mode === "text" ? "text" : "image",
+    exam: draft.exam === "english2" ? "english2" : "english1",
+    kind: draft.kind === "letter" ? "letter" : "essay",
+    topicId: typeof draft.topicId === "string" ? draft.topicId : "custom",
+    customTitle: typeof draft.customTitle === "string" ? draft.customTitle.slice(0, 120) : "",
+    customPrompt:
+      typeof draft.customPrompt === "string" ? draft.customPrompt.slice(0, 1200) : "",
+    target: typeof draft.target === "number" && Number.isFinite(draft.target) ? draft.target : 14,
+    level:
+      draft.level === "foundation" || draft.level === "advanced" ? draft.level : "steady",
+    updatedAt: typeof draft.updatedAt === "string" ? draft.updatedAt : ""
+  };
+}
+
+export function saveDraft(draft: Omit<GradeDraft, "updatedAt">): void {
+  writeJson(DRAFT_KEY, { ...draft, updatedAt: new Date().toISOString() });
+}
+
+export function clearDraft(): void {
+  if (!hasStorage()) return;
+  window.localStorage.removeItem(DRAFT_KEY);
 }
 
 export function loadCompactMode(): boolean {

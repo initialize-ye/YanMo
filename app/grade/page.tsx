@@ -38,9 +38,12 @@ import { prepareImage, type PreparedImage } from "@/lib/image";
 import { SAMPLE_ESSAY } from "@/lib/sample";
 import { buildHistoryInsight, cn, countWords, wordRangeFor } from "@/lib/utils";
 import {
+  clearDraft,
   loadAiConfig,
+  loadDraft,
   loadProfile,
   loadReports,
+  saveDraft,
   saveProfile,
   saveReport
 } from "@/lib/storage";
@@ -124,6 +127,7 @@ export default function GradePage() {
 
   const [gradingError, setGradingError] = useState<FlowError | null>(null);
   const [gradingStartedAt, setGradingStartedAt] = useState<number | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -134,13 +138,42 @@ export default function GradePage() {
     setMounted(true);
     document.title = "批改台 · 研墨 AI";
     const storedProfile = loadProfile();
-    setExam(storedProfile.exam);
-    setLevel(storedProfile.level);
-    setTarget(nearestTarget(storedProfile.exam, "essay", storedProfile.targetScore));
-    setTopicId(TOPICS[storedProfile.exam].essay[0].id);
+    const draft = loadDraft();
+    if (draft) {
+      setExam(draft.exam);
+      setLevel(draft.level);
+      setTarget(nearestTarget(draft.exam, draft.kind, draft.target));
+      setKind(draft.kind);
+      setMode(draft.mode === "image" && draft.text.trim() ? "text" : draft.mode);
+      setText(draft.text);
+      const topics = TOPICS[draft.exam][draft.kind];
+      setTopicId(
+        draft.topicId === "custom" || topics.some((item) => item.id === draft.topicId)
+          ? draft.topicId
+          : topics[0].id
+      );
+      setCustomTitle(draft.customTitle);
+      setCustomPrompt(draft.customPrompt);
+      setDraftRestored(
+        Boolean(draft.text.trim() || draft.customTitle.trim() || draft.customPrompt.trim())
+      );
+    } else {
+      setExam(storedProfile.exam);
+      setLevel(storedProfile.level);
+      setTarget(nearestTarget(storedProfile.exam, "essay", storedProfile.targetScore));
+      setTopicId(TOPICS[storedProfile.exam].essay[0].id);
+    }
     setAiConfig(loadAiConfig());
     void fetchAiStatus().then(setStatus);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const timer = window.setTimeout(() => {
+      saveDraft({ text, mode, exam, kind, topicId, customTitle, customPrompt, target, level });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [mounted, text, mode, exam, kind, topicId, customTitle, customPrompt, target, level]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -368,6 +401,8 @@ export default function GradePage() {
     try {
       const result = await apiGrade(request, aiConfig);
       saveReport(result);
+      clearDraft();
+      setDraftRestored(false);
       router.push(`/report/${result.id}`);
     } catch (err) {
       const flowError = err as { message?: string; code?: string };
@@ -429,6 +464,20 @@ export default function GradePage() {
     })();
   };
 
+  const discardDraft = () => {
+    clearDraft();
+    setDraftRestored(false);
+    setText("");
+    setCustomTitle("");
+    setCustomPrompt("");
+    setPrepared(null);
+    setFileName("");
+    setOcr(null);
+    setOcrState("idle");
+    setOcrError(null);
+    setError(null);
+  };
+
   const stageIndex = stage === "compose" ? 0 : stage === "recognize" ? 1 : 2;
   const showSetupNotice = mounted && status !== null && !configured;
   const canStart =
@@ -471,6 +520,29 @@ export default function GradePage() {
                 </span>
               </button>
               <StepIndicator current={stageIndex} />
+            </div>
+          )}
+
+          {stage === "compose" && draftRestored && (
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border border-jade/25 bg-[#e8f0fe] px-4 py-3 text-[14px] text-ink-soft">
+              <span className="inline-flex items-center gap-2">
+                <RefreshCw size={14} className="shrink-0 text-jade" />
+                已恢复上次未提交的草稿。
+              </span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="font-medium text-jade hover:underline"
+              >
+                清空草稿
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftRestored(false)}
+                className="text-ink-mute hover:text-ink"
+              >
+                知道了
+              </button>
             </div>
           )}
 
@@ -684,6 +756,12 @@ export default function GradePage() {
                       <textarea
                         value={text}
                         onChange={(event) => setText(event.target.value)}
+                        onKeyDown={(event) => {
+                          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                            event.preventDefault();
+                            handlePrimary();
+                          }
+                        }}
                         placeholder={"Paste your essay here...\n\n建议保留段落分隔。语法、拼写错误请照原样输入，批改会找出来。"}
                         className="ruled min-h-[360px] w-full resize-y border-0 bg-transparent p-0 font-serif text-[16.5px] leading-[34px] text-ink outline-none placeholder:font-sans placeholder:text-[14.5px] placeholder:leading-[34px] placeholder:text-ink-mute/60"
                         spellCheck={false}
@@ -711,6 +789,8 @@ export default function GradePage() {
                     type="button"
                     onClick={handlePrimary}
                     disabled={!canStart || preparing}
+                    aria-keyshortcuts="Control+Enter Meta+Enter"
+                    title="Ctrl / ⌘ + Enter"
                     className="btn btn-primary flex-1 justify-between !px-5 !py-3.5 sm:flex-none sm:min-w-[260px]"
                   >
                     <span className="flex items-center gap-2">
@@ -1140,6 +1220,12 @@ export default function GradePage() {
                         ref={recognizeTextareaRef}
                         value={text}
                         onChange={(event) => setText(event.target.value)}
+                        onKeyDown={(event) => {
+                          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                            event.preventDefault();
+                            void startGrading(text);
+                          }
+                        }}
                         className="ruled mt-3 min-h-[420px] w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-serif text-[16.5px] leading-[34px] text-ink outline-none"
                         spellCheck={false}
                         placeholder="识别结果会出现在这里。如果识别失败，也可以直接手动输入作文内容。"
@@ -1220,6 +1306,8 @@ export default function GradePage() {
                       type="button"
                       onClick={() => void startGrading(text)}
                       disabled={text.trim().length < 40 || ocrState === "running"}
+                      aria-keyshortcuts="Control+Enter Meta+Enter"
+                      title="Ctrl / ⌘ + Enter"
                       className="btn btn-jade flex-1 justify-between !px-5 !py-3.5 sm:flex-none sm:min-w-[240px]"
                     >
                       <span className="flex items-center gap-2">
