@@ -132,6 +132,7 @@ export default function GradePage() {
 
   useEffect(() => {
     setMounted(true);
+    document.title = "批改台 · 研墨 AI";
     const storedProfile = loadProfile();
     setExam(storedProfile.exam);
     setLevel(storedProfile.level);

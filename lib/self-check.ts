@@ -99,9 +99,8 @@ export interface SelfCheckResult {
   wordRange: [number, number];
 }
 
-function countMatches(text: string, word: string): number {
-  return text.match(new RegExp(`\\b${word}\\b`, "g"))?.length ?? 0;
-}
+const MISSPELLING_SET = new Set(Object.keys(MISSPELLINGS));
+const INTENSIFIER_SET = new Set(INTENSIFIERS);
 
 export function runSelfCheck(text: string, kind: EssayKind): SelfCheckResult {
   const trimmed = text.trim();
@@ -128,29 +127,30 @@ export function runSelfCheck(text: string, kind: EssayKind): SelfCheckResult {
     }
   });
 
+  // 一次分词后统计所有词频，避免对每个待检查单词各跑一遍正则。
   const lower = trimmed.toLowerCase();
-  const misspellings = Object.entries(MISSPELLINGS)
-    .map(([word, suggestion]) => ({ word, suggestion, count: countMatches(lower, word) }))
-    .filter((item) => item.count > 0);
-
-  const wordCounts = new Map<string, number>();
   const tokens = lower.match(/[a-z]+(?:['’-][a-z]+)*/g) ?? [];
+  const tokenCounts = new Map<string, number>();
   tokens.forEach((token) => {
     const word = token.replace(/['’-].*$/, "");
-    if (word.length < 4 || STOP_WORDS.has(word)) return;
-    wordCounts.set(word, (wordCounts.get(word) ?? 0) + 1);
+    if (!word) return;
+    tokenCounts.set(word, (tokenCounts.get(word) ?? 0) + 1);
   });
-  const repeatedWords = Array.from(wordCounts.entries())
-    .filter(([, count]) => count >= 4)
+
+  const misspellings = Array.from(tokenCounts.entries())
+    .filter(([word]) => MISSPELLING_SET.has(word))
+    .map(([word, count]) => ({ word, suggestion: MISSPELLINGS[word], count }))
+    .sort((a, b) => b.count - a.count);
+
+  const repeatedWords = Array.from(tokenCounts.entries())
+    .filter(([word, count]) => count >= 4 && word.length >= 4 && !STOP_WORDS.has(word))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([word, count]) => ({ word, count }));
 
-  const intensifiers = INTENSIFIERS.map((word) => ({
-    word,
-    count: countMatches(lower, word)
-  }))
-    .filter((item) => item.count >= 3)
+  const intensifiers = Array.from(tokenCounts.entries())
+    .filter(([word, count]) => count >= 3 && INTENSIFIER_SET.has(word))
+    .map(([word, count]) => ({ word, count }))
     .sort((a, b) => b.count - a.count);
 
   return {

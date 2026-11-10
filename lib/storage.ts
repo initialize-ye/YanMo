@@ -7,7 +7,7 @@ const REPORTS_KEY = "yanmo.reports.v1";
 const PROFILE_KEY = "yanmo.profile.v1";
 const AI_KEY = "yanmo.ai.v1";
 const COMPACT_KEY = "yanmo.compact.v1";
-const MAX_REPORTS = 100;
+export const MAX_REPORTS = 100;
 
 function hasStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -215,21 +215,33 @@ export function parseImportFile(raw: string): ImportPreview {
   };
 }
 
+export interface ImportResult {
+  /** 本次成功写入的导入记录数 */
+  added: number;
+  /** 导入记录中因超出上限而未写入的数量 */
+  dropped: number;
+  /** 本机原有记录中因超出上限被挤掉的数量 */
+  droppedExisting: number;
+}
+
 /** 把预览中的报告合并进本机档案，返回实际写入数量。 */
 export function applyImport(
   preview: ImportPreview,
   options: { profile?: boolean } = {}
-): { added: number; dropped: number } {
+): ImportResult {
   let added = 0;
   let dropped = 0;
+  let droppedExisting = 0;
   if (preview.reports.length) {
-    const merged = [...loadReports(), ...preview.reports].sort(
+    const existing = loadReports();
+    const merged = [...existing, ...preview.reports].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     const kept = merged.slice(0, MAX_REPORTS);
-    const importedIds = new Set(preview.reports.map((report) => report.id));
-    added = kept.filter((report) => importedIds.has(report.id)).length;
+    const keptIds = new Set(kept.map((report) => report.id));
+    added = preview.reports.filter((report) => keptIds.has(report.id)).length;
     dropped = preview.reports.length - added;
+    droppedExisting = existing.filter((report) => !keptIds.has(report.id)).length;
     writeJson(REPORTS_KEY, kept);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("yanmo:reports-changed"));
@@ -238,5 +250,5 @@ export function applyImport(
   if (options.profile && preview.profile) {
     saveProfile(preview.profile);
   }
-  return { added, dropped };
+  return { added, dropped, droppedExisting };
 }

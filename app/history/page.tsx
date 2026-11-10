@@ -19,6 +19,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CATEGORY_LABELS, examLabel, kindLabel } from "@/lib/constants";
 import {
+  MAX_REPORTS,
   applyImport,
   exportAllData,
   loadReports,
@@ -65,7 +66,11 @@ export default function HistoryPage() {
     anchor.click();
     URL.revokeObjectURL(url);
     setImportError(null);
-    setImportNote(`已导出 ${reports.length} 篇报告，不包含 API Key。`);
+    setImportNote(
+      reports.length
+        ? `已导出 ${reports.length} 篇报告和个人设置，不包含 API Key。`
+        : "已导出个人设置（当前没有报告），不包含 API Key。"
+    );
     window.setTimeout(() => setImportNote(null), 4000);
   };
 
@@ -101,15 +106,15 @@ export default function HistoryPage() {
 
   const confirmImport = () => {
     if (!preview) return;
-    const { added, dropped } = applyImport(preview, { profile: withProfile });
+    const { added, dropped, droppedExisting } = applyImport(preview, { profile: withProfile });
     setPreview(null);
     setImportError(null);
-    setImportNote(
-      `已导入 ${added} 篇报告${preview.profile && withProfile ? "，并更新个人设置" : ""}${
-        dropped > 0 ? `；超出 ${dropped} 篇上限的记录未导入` : ""
-      }。`
-    );
-    window.setTimeout(() => setImportNote(null), 5000);
+    const notes = [`已导入 ${added} 篇报告`];
+    if (preview.profile && withProfile) notes.push("已更新个人设置");
+    if (dropped > 0) notes.push(`${dropped} 篇导入记录超出 ${MAX_REPORTS} 篇上限，未写入`);
+    if (droppedExisting > 0) notes.push(`本机最旧的 ${droppedExisting} 篇记录被挤出上限`);
+    setImportNote(`${notes.join("；")}。`);
+    window.setTimeout(() => setImportNote(null), 6000);
   };
 
   const issues = useMemo(() => {
@@ -156,8 +161,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={exportArchive}
-              disabled={!reports.length}
-              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px] disabled:opacity-50"
+              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]"
             >
               <Download size={15} /> 导出
             </button>
@@ -262,7 +266,7 @@ export default function HistoryPage() {
           <>
             <div className="mt-7 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
               {[
-                { label: "累计批改", value: `${reports.length}`, unit: "篇", note: "本地最多保存 100 篇" },
+                { label: "累计批改", value: `${reports.length}`, unit: "篇", note: `本地最多保存 ${MAX_REPORTS} 篇` },
                 { label: "平均得分率", value: `${average}`, unit: "%", note: "按各题型满分折算" },
                 { label: "最高得分率", value: `${best}`, unit: "%", note: latest ? `最近一篇 ${formatScore(latest.score.total)}/${latest.meta.maxScore}` : "" },
                 {

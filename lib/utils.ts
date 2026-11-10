@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { CATEGORY_LABELS } from "./constants";
 import type { Annotation, ErrorCategory, GradeResult, HistoryInsight } from "./types";
 
 export const LANGUAGE_CATEGORIES: ErrorCategory[] = ["grammar", "spelling", "vocab"];
@@ -56,15 +55,6 @@ export function countWords(text: string): number {
   return matches ? matches.length : 0;
 }
 
-export function truncate(text: string, length: number): string {
-  if (text.length <= length) return text;
-  return `${text.slice(0, length).trimEnd()}…`;
-}
-
-export function categoryLabel(category: ErrorCategory): string {
-  return CATEGORY_LABELS[category] ?? "其他";
-}
-
 export function buildHistoryInsight(reports: GradeResult[]): HistoryInsight | undefined {
   if (!reports.length) return undefined;
   const counts = new Map<ErrorCategory, number>();
@@ -97,10 +87,4 @@ export function averagePercent(reports: GradeResult[]): number {
 
 export function wordRangeFor(kind: "letter" | "essay"): [number, number] {
   return kind === "letter" ? [90, 130] : [150, 220];
-}
-
-export function directionText(diff: number): string {
-  if (diff > 0) return `较上篇 +${formatScore(diff)}`;
-  if (diff < 0) return `较上篇 ${formatScore(diff)}`;
-  return "与上篇持平";
 }
