@@ -480,6 +480,7 @@ export default function GradePage() {
 
   const stageIndex = stage === "compose" ? 0 : stage === "recognize" ? 1 : 2;
   const showSetupNotice = mounted && status !== null && !configured;
+  const needsSetup = showSetupNotice;
   const canStart =
     (mode === "image" ? Boolean(prepared) && !preparing : text.trim().length >= 40) &&
     !topicExtracting;
@@ -780,23 +781,44 @@ export default function GradePage() {
                 )}
 
                 <div className="mt-7">
-                  <button
-                    type="button"
-                    onClick={handlePrimary}
-                    disabled={!canStart || preparing}
-                    aria-keyshortcuts="Control+Enter Meta+Enter"
-                    title="Ctrl / ⌘ + Enter"
-                    className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      {mode === "image" ? <ScanLine size={18} /> : <Settings2 size={18} />}
-                      {mode === "image" ? "识别手写并继续" : "开始批改"}
-                    </span>
-                    <ArrowRight size={18} />
-                  </button>
+                  {needsSetup ? (
+                    <Link
+                      href="/settings"
+                      className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Settings2 size={18} /> 先配置 AI 接口
+                      </span>
+                      <ArrowRight size={18} />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePrimary}
+                      disabled={!canStart || preparing}
+                      aria-keyshortcuts="Control+Enter Meta+Enter"
+                      title="Ctrl / ⌘ + Enter"
+                      className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        {mode === "image" ? <ScanLine size={18} /> : <Settings2 size={18} />}
+                        {mode === "image" ? "识别手写并继续" : "开始批改"}
+                      </span>
+                      <ArrowRight size={18} />
+                    </button>
+                  )}
                   <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
                     <span>
-                      {canStart ? "准备好了" : mode === "image" ? "先选择一张作文照片" : "至少输入 40 个字符"}
+                      {needsSetup
+                        ? "填好接口信息后回到这里即可开始"
+                        : canStart
+                          ? "准备好了"
+                          : mode === "image"
+                            ? "先选择一张作文照片"
+                            : "至少输入 40 个字符"}
+                      {!needsSetup && canStart && (
+                        <span className="hidden sm:inline"> · Ctrl + Enter 提交</span>
+                      )}
                     </span>
                     <Link href="/mistakes" className="font-medium text-ink-mute hover:text-jade">
                       打开错题本 →
@@ -1301,31 +1323,34 @@ export default function GradePage() {
                     </div>
                   )}
 
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <div className="mt-6">
                     <button
                       type="button"
                       onClick={() => void startGrading(text)}
                       disabled={text.trim().length < 40 || ocrState === "running"}
                       aria-keyshortcuts="Control+Enter Meta+Enter"
                       title="Ctrl / ⌘ + Enter"
-                      className="btn btn-jade flex-1 justify-between !px-5 !py-3.5 sm:flex-none sm:min-w-[240px]"
+                      className="btn btn-primary w-full justify-between !px-5 !py-4 text-[15.5px]"
                     >
-                      <span className="flex items-center gap-2">
-                        <Settings2 size={16} /> 确认文字，开始批改
+                      <span className="flex items-center gap-2.5">
+                        <Settings2 size={18} /> 确认文字，开始批改
                       </span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={18} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={backToCompose}
-                      className="text-[14px] font-medium text-ink-mute hover:text-jade"
-                    >
-                      重新上传
-                    </button>
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
+                      <span className="hidden sm:inline">Ctrl + Enter 提交批改</span>
+                      <button
+                        type="button"
+                        onClick={backToCompose}
+                        className="ml-auto font-medium text-ink-mute hover:text-jade"
+                      >
+                        重新上传
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-[13px] text-ink-mute">
+                      确认后将按「{examLabel(exam)} · {kindLabel(kind)}」评分，目标 {safeTarget} 分。
+                    </p>
                   </div>
-                  <p className="mt-3 text-[13px] text-ink-mute">
-                    确认后将按「{examLabel(exam)} · {kindLabel(kind)}」评分，目标 {safeTarget} 分。
-                  </p>
                 </div>
               </div>
             </div>

@@ -47,6 +47,7 @@ export default function HistoryPage() {
   const [withProfile, setWithProfile] = useState(true);
   const [query, setQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const restoredRef = useRef(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -58,6 +59,27 @@ export default function HistoryPage() {
     window.addEventListener("yanmo:reports-changed", refresh);
     return () => window.removeEventListener("yanmo:reports-changed", refresh);
   }, []);
+
+  useEffect(() => {
+    if (loading || restoredRef.current) return;
+    restoredRef.current = true;
+    const savedQuery = sessionStorage.getItem("yanmo.history.query");
+    if (savedQuery) setQuery(savedQuery);
+    const savedScroll = Number(sessionStorage.getItem("yanmo.history.scroll") ?? 0);
+    sessionStorage.removeItem("yanmo.history.scroll");
+    if (Number.isFinite(savedScroll) && savedScroll > 0) {
+      window.setTimeout(() => window.scrollTo({ top: savedScroll, behavior: "auto" }), 40);
+    }
+  }, [loading]);
+
+  const updateQuery = (value: string) => {
+    setQuery(value);
+    sessionStorage.setItem("yanmo.history.query", value);
+  };
+
+  const rememberScroll = () => {
+    sessionStorage.setItem("yanmo.history.scroll", String(window.scrollY));
+  };
 
   const exportArchive = () => {
     const blob = new Blob([exportAllData()], { type: "application/json;charset=utf-8" });
@@ -315,7 +337,7 @@ export default function HistoryPage() {
                     />
                     <input
                       value={query}
-                      onChange={(event) => setQuery(event.target.value)}
+                      onChange={(event) => updateQuery(event.target.value)}
                       placeholder="搜索题目 / 试卷 / 题型"
                       aria-label="搜索写作记录"
                       className="field !h-9 w-full !py-0 pl-9 text-[13.5px] sm:w-56"
@@ -331,7 +353,7 @@ export default function HistoryPage() {
                   <p className="mt-1 text-[13.5px] text-ink-mute">换一个关键词试试。</p>
                   <button
                     type="button"
-                    onClick={() => setQuery("")}
+                    onClick={() => updateQuery("")}
                     className="mt-3 text-[13px] font-medium text-jade hover:underline"
                   >
                     清空搜索
@@ -343,6 +365,7 @@ export default function HistoryPage() {
                     <Link
                       key={report.id}
                       href={`/report/${report.id}`}
+                      onClick={rememberScroll}
                       className="group grid grid-cols-[1fr_auto] items-center gap-4 px-1 py-4 transition-colors hover:bg-paper-light/60 sm:grid-cols-[92px_1fr_140px_28px]"
                     >
                       <span className="hidden text-[13px] text-ink-mute sm:block">

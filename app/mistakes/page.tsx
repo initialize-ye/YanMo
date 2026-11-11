@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -29,6 +29,7 @@ export default function MistakesPage() {
   const [practice, setPractice] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const restoredRef = useRef(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -40,6 +41,32 @@ export default function MistakesPage() {
     window.addEventListener("yanmo:reports-changed", refresh);
     return () => window.removeEventListener("yanmo:reports-changed", refresh);
   }, []);
+
+  useEffect(() => {
+    if (loading || restoredRef.current) return;
+    restoredRef.current = true;
+    const savedFilter = sessionStorage.getItem("yanmo.mistakes.filter");
+    if (savedFilter === "all" || (savedFilter && savedFilter in CATEGORY_LABELS)) {
+      setFilter(savedFilter as FilterKey);
+    }
+    const savedQuery = sessionStorage.getItem("yanmo.mistakes.query");
+    if (savedQuery) setQuery(savedQuery);
+    const savedScroll = Number(sessionStorage.getItem("yanmo.mistakes.scroll") ?? 0);
+    sessionStorage.removeItem("yanmo.mistakes.scroll");
+    if (Number.isFinite(savedScroll) && savedScroll > 0) {
+      window.setTimeout(() => window.scrollTo({ top: savedScroll, behavior: "auto" }), 40);
+    }
+  }, [loading]);
+
+  const updateFilter = (value: FilterKey) => {
+    setFilter(value);
+    sessionStorage.setItem("yanmo.mistakes.filter", value);
+  };
+
+  const updateQuery = (value: string) => {
+    setQuery(value);
+    sessionStorage.setItem("yanmo.mistakes.query", value);
+  };
 
   const mistakes = useMemo(() => collectMistakes(reports), [reports]);
 
@@ -156,7 +183,7 @@ export default function MistakesPage() {
                     <button
                       key={item.key}
                       type="button"
-                      onClick={() => setFilter(item.key)}
+                      onClick={() => updateFilter(item.key)}
                       aria-pressed={active}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors",
@@ -182,7 +209,7 @@ export default function MistakesPage() {
                   />
                   <input
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => updateQuery(event.target.value)}
                     placeholder="搜索原句或修改建议"
                     className="field !h-10 w-full !py-0 pl-9 text-[14px] sm:w-64"
                     aria-label="搜索错题"
@@ -352,6 +379,9 @@ function MistakeCard({
         </span>
         <Link
           href={`/report/${item.reportId}`}
+          onClick={() =>
+            sessionStorage.setItem("yanmo.mistakes.scroll", String(window.scrollY))
+          }
           className="inline-flex shrink-0 items-center gap-1 font-medium text-jade hover:underline"
         >
           查看原报告 <ArrowUpRight size={12} />
