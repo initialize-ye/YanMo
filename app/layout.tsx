@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { DropGuard } from "@/components/drop-guard";
 import { PWARegister } from "@/components/pwa-register";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="zh-CN">
       <body>
         {children}
+        <DropGuard />
         <PWARegister />
       </body>
     </html>

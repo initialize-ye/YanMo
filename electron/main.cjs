@@ -305,6 +305,29 @@ function openLogs() {
   void shell.openPath(LOG_DIR);
 }
 
+function showShortcuts() {
+  const detail = [
+    "Ctrl + 1    批改台",
+    "Ctrl + 2    错题本",
+    "Ctrl + 3    写作档案",
+    "Ctrl + 4    设置",
+    "",
+    "Ctrl + Enter    批改台提交文字",
+    "Ctrl + V    在批改台粘贴作文照片",
+    "Ctrl + P    打印 / 导出 PDF",
+    "",
+    "Ctrl + R    重新加载",
+    "Ctrl + 加号 / 减号    调整页面缩放（会记住）"
+  ].join("\n");
+  void dialog.showMessageBox(mainWindow ?? undefined, {
+    type: "info",
+    title: "常用快捷键",
+    message: "研墨 AI 常用快捷键",
+    detail,
+    buttons: ["知道了"]
+  });
+}
+
 function showAbout() {
   const detail = [
     `版本 ${app.getVersion()}`,
@@ -412,6 +435,16 @@ function buildMenu() {
         { label: "写作档案", accelerator: "CmdOrCtrl+3", click: () => navigate("/history") },
         { label: "设置", accelerator: "CmdOrCtrl+4", click: () => navigate("/settings") },
         { type: "separator" },
+        {
+          label: "打印 / 导出 PDF…",
+          accelerator: "CmdOrCtrl+P",
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.print({ printBackground: true });
+            }
+          }
+        },
+        { type: "separator" },
         { label: "打开数据目录", click: openUserData },
         { label: "打开日志目录", click: openLogs },
         { type: "separator" },
@@ -448,6 +481,8 @@ function buildMenu() {
     {
       label: "帮助",
       submenu: [
+        { label: "常用快捷键", click: showShortcuts },
+        { type: "separator" },
         { label: "检查更新", click: () => void checkForUpdates() },
         { label: "打开下载页", click: () => void shell.openExternal(RELEASES_URL) },
         { type: "separator" },
@@ -506,15 +541,33 @@ async function createWindow(url) {
     if (target.startsWith(`http://127.0.0.1:${PORT}`)) {
       return { action: "allow" };
     }
-    void shell.openExternal(target);
+    if (/^https?:/i.test(target)) void shell.openExternal(target);
     return { action: "deny" };
   });
 
   mainWindow.webContents.on("will-navigate", (event, target) => {
-    if (!target.startsWith(`http://127.0.0.1:${PORT}`)) {
-      event.preventDefault();
-      void shell.openExternal(target);
+    if (target.startsWith(`http://127.0.0.1:${PORT}`)) return;
+    // 只把 http(s) 链接交给浏览器；拖入文件等本地地址直接拦下，避免窗口跳走。
+    event.preventDefault();
+    if (/^https?:/i.test(target)) void shell.openExternal(target);
+  });
+
+  // 桌面端需要右键菜单，否则输入框里无法剪切、复制、粘贴。
+  mainWindow.webContents.on("context-menu", (_event, params) => {
+    const template = [];
+    if (params.isEditable) {
+      template.push(
+        { role: "cut", label: "剪切", enabled: params.editFlags.canCut },
+        { role: "copy", label: "复制", enabled: params.editFlags.canCopy },
+        { role: "paste", label: "粘贴", enabled: params.editFlags.canPaste },
+        { type: "separator" },
+        { role: "selectAll", label: "全选", enabled: params.editFlags.canSelectAll }
+      );
+    } else if (params.selectionText.trim()) {
+      template.push({ role: "copy", label: "复制", enabled: params.editFlags.canCopy });
     }
+    if (!template.length) return;
+    Menu.buildFromTemplate(template).popup({ window: mainWindow ?? undefined });
   });
 
   // 页面加载失败时给出可操作的提示，而不是空白窗口。

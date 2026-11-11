@@ -338,6 +338,22 @@ export default function GradePage() {
     return () => document.removeEventListener("paste", onPaste);
   }, [stage, handleFile]);
 
+  // 图片拖到上传框以外也可以直接接收，不必精确对准虚线框。
+  useEffect(() => {
+    if (stage !== "compose" || mode !== "image") return;
+    const onDrop = (event: DragEvent) => {
+      const targetElement = event.target as HTMLElement | null;
+      if (targetElement?.closest("[data-dropzone]")) return;
+      const file = event.dataTransfer?.files?.[0];
+      if (file && file.type.startsWith("image/")) {
+        event.preventDefault();
+        void handleFile(file);
+      }
+    };
+    window.addEventListener("drop", onDrop);
+    return () => window.removeEventListener("drop", onDrop);
+  }, [stage, mode, handleFile]);
+
   const startRecognition = async () => {
     if (!configured) {
       setError("还没有配置 AI。请先到设置页填写 API Key。");
@@ -592,6 +608,7 @@ export default function GradePage() {
                 {mode === "image" ? (
                   <div className="mt-5">
                     <div
+                      data-dropzone
                       onDragOver={(event) => {
                         event.preventDefault();
                         setDragging(true);

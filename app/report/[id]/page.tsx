@@ -318,7 +318,7 @@ export default function ReportPage() {
             <button
               type="button"
               onClick={() => window.print()}
-              title="打印或导出 PDF"
+              title="打印或导出 PDF（Ctrl + P）"
               aria-label="打印或导出 PDF"
               className="btn-quiet !px-2.5"
             >
