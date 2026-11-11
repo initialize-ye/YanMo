@@ -39,10 +39,10 @@ export default function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link href="/grade" className="btn btn-primary !px-6 !py-3">
+                <Link href="/grade" className="btn btn-primary !px-7 !py-3.5 text-[15.5px]">
                   上传作文，开始批改 <ArrowUpRight size={17} />
                 </Link>
-                <Link href="/mistakes" className="btn btn-ghost !px-5 !py-3">
+                <Link href="/mistakes" className="btn btn-ghost !px-5 !py-3.5">
                   打开错题本
                 </Link>
               </div>
@@ -134,25 +134,19 @@ export default function HomePage() {
         </section>
 
         <section className="relative border-b border-line bg-white">
-          <div className="wrap grid items-end gap-10 py-20 sm:grid-cols-[1fr_auto] sm:py-24">
+          <div className="wrap flex flex-col gap-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:py-12">
             <div>
-              <p className="eyebrow">
-                <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 开始使用
-              </p>
-              <h2 className="display mt-4 text-[clamp(2rem,4.4vw,3.5rem)] leading-[1.18]">
-                下一篇，<br className="sm:hidden" />
-                <span className="text-jade">先把问题改对。</span>
-              </h2>
-              <p className="mt-4 max-w-lg text-[15.5px] leading-7 text-ink-soft">
-                上传一张照片，或直接粘贴文字稿。报告保存在本机，随时可以回看。
+              <h2 className="text-[20px] font-medium text-ink">准备好就上传下一篇</h2>
+              <p className="mt-1.5 text-[14.5px] leading-6 text-ink-mute">
+                支持照片和文字稿，报告保存在本机，随时回看。
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:min-w-[210px]">
-              <Link href="/grade" className="btn btn-primary justify-between !px-5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link href="/grade" className="btn btn-primary !px-5 !py-3">
                 去批改台 <ArrowUpRight size={16} />
               </Link>
-              <Link href="/history" className="btn btn-ghost !px-5">
-                打开写作档案
+              <Link href="/history" className="btn btn-ghost !px-5 !py-3">
+                写作档案
               </Link>
             </div>
           </div>

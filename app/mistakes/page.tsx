@@ -129,28 +129,26 @@ export default function MistakesPage() {
           <EmptyMistakes hasReports={reports.length > 0} />
         ) : (
           <>
-            <div className="mt-7 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
+            <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-2.5 border-y border-line py-3.5 text-[13.5px] sm:gap-x-9">
               {[
-                { label: "错题总数", value: `${mistakes.length}`, unit: "处" },
-                { label: "涉及作文", value: `${reportCount}`, unit: "篇" },
+                { label: "错题总数", value: `${mistakes.length} 处` },
+                { label: "涉及作文", value: `${reportCount} 篇` },
                 {
                   label: "最常见",
-                  value: topCategory ? CATEGORY_LABELS[topCategory.category] : "—",
-                  unit: topCategory ? `${topCategory.count} 处` : ""
+                  value: topCategory
+                    ? `${CATEGORY_LABELS[topCategory.category]} ${topCategory.count} 处`
+                    : "暂无"
                 },
-                { label: "重复错误", value: `${repeatCount}`, unit: "处" }
+                { label: "重复错误", value: `${repeatCount} 处` }
               ].map((item) => (
-                <div key={item.label} className="bg-paper-light p-5">
-                  <p className="text-[13px] text-ink-mute">{item.label}</p>
-                  <p className="mt-2 flex items-baseline gap-1">
-                    <span className="text-[24px] font-medium leading-none text-ink">{item.value}</span>
-                    <span className="text-[13px] text-ink-mute">{item.unit}</span>
-                  </p>
-                </div>
+                <span key={item.label} className="inline-flex items-baseline gap-1.5">
+                  <span className="text-ink-mute">{item.label}</span>
+                  <span className="num text-[15px] font-medium text-ink">{item.value}</span>
+                </span>
               ))}
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 border-b border-line pb-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mt-5 flex flex-col gap-3 border-b border-line pb-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-1.5">
                 {filterOptions.map((item) => {
                   const active = filter === item.key;

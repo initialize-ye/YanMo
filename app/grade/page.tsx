@@ -547,22 +547,17 @@ export default function GradePage() {
           )}
 
           {showSetupNotice && stage === "compose" && (
-            <div className="mt-6 flex flex-col gap-3 rounded-xl border border-[#d2e3fc] bg-[#e8f0fe] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2.5">
-                <Info size={16} className="mt-0.5 shrink-0 text-jade" />
-                <p className="text-[14.5px] leading-6 text-ink-soft">
-                  <strong className="text-ink">还没有配置 AI。</strong>{" "}
-                  填写一个兼容 OpenAI 接口的 Key 就能开始批改，也可以在设置页使用服务器端配置。
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2 pl-6 sm:pl-0">
-                <Link
-                  href="/settings"
-                  className="btn btn-primary !px-3.5 !py-2 text-[14px]"
-                >
-                  去设置
-                </Link>
-              </div>
+            <div className="mt-6 flex flex-col gap-2 border-l-2 border-gold/50 pl-3 text-[13.5px] leading-6 text-ink-mute sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                <strong className="font-medium text-ink-soft">还没有配置 AI。</strong>{" "}
+                需要先填写接口信息才能批改，也可以使用服务器端配置。
+              </p>
+              <Link
+                href="/settings"
+                className="shrink-0 text-[13.5px] font-medium text-jade hover:underline"
+              >
+                去设置 →
+              </Link>
             </div>
           )}
 
@@ -608,10 +603,10 @@ export default function GradePage() {
                         if (dropped) void handleFile(dropped);
                       }}
                       className={cn(
-                        "relative flex min-h-[390px] flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
+                        "relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors",
                         dragging
                           ? "border-jade bg-[#e8f0fe]"
-                          : "border-line bg-white hover:border-jade/50"
+                          : "border-[#c3d7f7] bg-white hover:border-jade/60 hover:bg-[#f8fbff]"
                       )}
                     >
                       <CornerMarks />
@@ -660,14 +655,14 @@ export default function GradePage() {
                         </div>
                       ) : (
                         <>
-                          <span className="grid h-14 w-14 place-items-center rounded-full bg-[#e8f0fe] text-jade">
-                            <ScanLine size={25} strokeWidth={1.8} />
+                          <span className="grid h-16 w-16 place-items-center rounded-full bg-[#e8f0fe] text-jade">
+                            <ScanLine size={28} strokeWidth={1.8} />
                           </span>
-                          <h2 className="display mt-6 text-[24px] text-ink">上传作文照片</h2>
-                          <p className="mt-2 max-w-xs text-[14.5px] leading-6 text-ink-mute">
+                          <h2 className="display mt-6 text-[26px] text-ink">上传作文照片</h2>
+                          <p className="mt-2.5 max-w-sm text-[15px] leading-7 text-ink-mute">
                             拖入图片、Ctrl+V 粘贴，或选择文件。请在光线均匀处拍摄，字迹尽量清晰。
                           </p>
-                          <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+                          <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
@@ -784,24 +779,29 @@ export default function GradePage() {
                   </div>
                 )}
 
-                <div className="mt-7 flex flex-wrap items-center gap-3">
+                <div className="mt-7">
                   <button
                     type="button"
                     onClick={handlePrimary}
                     disabled={!canStart || preparing}
                     aria-keyshortcuts="Control+Enter Meta+Enter"
                     title="Ctrl / ⌘ + Enter"
-                    className="btn btn-primary flex-1 justify-between !px-5 !py-3.5 sm:flex-none sm:min-w-[260px]"
+                    className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
                   >
-                    <span className="flex items-center gap-2">
-                      {mode === "image" ? <ScanLine size={17} /> : <Settings2 size={17} />}
+                    <span className="flex items-center gap-2.5">
+                      {mode === "image" ? <ScanLine size={18} /> : <Settings2 size={18} />}
                       {mode === "image" ? "识别手写并继续" : "开始批改"}
                     </span>
-                    <ArrowRight size={17} />
+                    <ArrowRight size={18} />
                   </button>
-                  <Link href="/mistakes" className="btn btn-ghost !py-3.5 text-[14.5px]">
-                    打开错题本
-                  </Link>
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
+                    <span>
+                      {canStart ? "准备好了" : mode === "image" ? "先选择一张作文照片" : "至少输入 40 个字符"}
+                    </span>
+                    <Link href="/mistakes" className="font-medium text-ink-mute hover:text-jade">
+                      打开错题本 →
+                    </Link>
+                  </div>
                 </div>
                 <p className="mt-3 text-[13px] leading-6 text-ink-mute">
                   提交即表示同意将本次作文内容发送至你配置的 AI 服务用于批改；研墨服务器不留存作文，报告仅保存在你的浏览器中。
@@ -809,9 +809,9 @@ export default function GradePage() {
               </div>
 
               <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
-                <div className="paper-card p-5 sm:p-6">
-                  <div className="flex items-center justify-between border-b border-line pb-4">
-                    <h2 className="text-[15.5px] font-medium text-ink">批改设置</h2>
+                <div className="rounded-2xl border border-line bg-paper-light/50 p-5 sm:p-6">
+                  <div className="flex items-center justify-between border-b border-line pb-3">
+                    <h2 className="text-[14px] font-medium text-ink-mute">批改设置</h2>
                     <span className="text-[13px] text-ink-mute">满分 {maxScore} 分</span>
                   </div>
 
@@ -1368,15 +1368,15 @@ function ModeTab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "relative flex items-center gap-1.5 px-3 pb-3 pt-1 text-[14.5px] font-medium transition-colors",
-        active ? "text-ink" : "text-ink-mute hover:text-jade"
+        "relative flex items-center gap-2 px-3.5 pb-3 pt-1 text-[15px] font-medium transition-colors",
+        active ? "text-jade" : "text-ink-mute hover:text-jade"
       )}
     >
       {icon}
       {label}
       <span
         className={cn(
-          "absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-jade transition-transform duration-300",
+          "absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-jade transition-transform duration-300",
           active ? "scale-x-100" : "scale-x-0"
         )}
       />

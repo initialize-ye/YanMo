@@ -281,31 +281,113 @@ export default function HistoryPage() {
           <EmptyHistory onImport={pickFile} />
         ) : (
           <>
-            <div className="mt-7 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-4">
+            <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-2.5 border-y border-line py-3.5 text-[13.5px] sm:gap-x-9">
               {[
-                { label: "累计批改", value: `${reports.length}`, unit: "篇", note: `本地最多保存 ${MAX_REPORTS} 篇` },
-                { label: "平均得分率", value: `${average}`, unit: "%", note: "按各题型满分折算" },
-                { label: "最高得分率", value: `${best}`, unit: "%", note: latest ? `最近一篇 ${formatScore(latest.score.total)}/${latest.meta.maxScore}` : "" },
-                {
-                  label: "批注总数",
-                  value: `${totalAnnotations}`,
-                  unit: "处",
-                  note: issues[0] ? `最常出现：${CATEGORY_LABELS[issues[0].category]}` : "暂无"
-                }
-              ].map((item) => (
-                <div key={item.label} className="bg-paper-light p-5">
-                  <p className="text-[13px] tracking-[0.16em] text-ink-mute">{item.label}</p>
-                  <p className="mt-2 flex items-baseline gap-1">
-                    <span className="num text-[32px] leading-none text-ink">{item.value}</span>
-                    <span className="text-[13px] text-ink-mute">{item.unit}</span>
-                  </p>
-                  <p className="mt-2 text-[13px] leading-5 text-ink-mute">{item.note}</p>
-                </div>
+                ["累计批改", `${reports.length} 篇`],
+                ["平均得分率", `${average}%`],
+                ["最高得分率", `${best}%`],
+                ["批注总数", `${totalAnnotations} 处`],
+                ["最常出现", issues[0] ? CATEGORY_LABELS[issues[0].category] : "暂无"]
+              ].map(([label, value]) => (
+                <span key={label} className="inline-flex items-baseline gap-1.5">
+                  <span className="text-ink-mute">{label}</span>
+                  <span className="num text-[15px] font-medium text-ink">{value}</span>
+                </span>
               ))}
+              <span className="ml-auto hidden text-[12.5px] text-ink-mute sm:inline">
+                本地最多保存 {MAX_REPORTS} 篇
+              </span>
             </div>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.45fr_1fr]">
-              <section className="paper-card p-5 sm:p-6">
+            <section className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-paper sm:p-6">
+              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+                <div>
+                  <h2 className="display text-[24px]">全部记录</h2>
+                  <p className="mt-1 text-[13.5px] text-ink-mute">
+                    共 {reports.length} 篇，点击查看完整批改
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search
+                      size={14}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute"
+                    />
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="搜索题目 / 试卷 / 题型"
+                      aria-label="搜索写作记录"
+                      className="field !h-9 w-full !py-0 pl-9 text-[13.5px] sm:w-56"
+                    />
+                  </div>
+                  <span className="text-[13px] text-ink-mute">按时间倒序</span>
+                </div>
+              </div>
+
+              {filteredReports.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-[15px] font-medium text-ink">没有匹配的记录</p>
+                  <p className="mt-1 text-[13.5px] text-ink-mute">换一个关键词试试。</p>
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="mt-3 text-[13px] font-medium text-jade hover:underline"
+                  >
+                    清空搜索
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-line/70">
+                  {filteredReports.map((report) => (
+                    <Link
+                      key={report.id}
+                      href={`/report/${report.id}`}
+                      className="group grid grid-cols-[1fr_auto] items-center gap-4 px-1 py-4 transition-colors hover:bg-paper-light/60 sm:grid-cols-[92px_1fr_140px_28px]"
+                    >
+                      <span className="hidden text-[13px] text-ink-mute sm:block">
+                        {formatDate(report.createdAt)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-[16px] font-medium text-ink transition-colors group-hover:text-jade">
+                          {report.meta.topicTitle}
+                        </p>
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-ink-mute">
+                          <span>{examLabel(report.meta.exam)}</span>
+                          <span className="text-ink-mute/40">/</span>
+                          <span>{kindLabel(report.meta.kind)}</span>
+                          <span className="text-ink-mute/40">/</span>
+                          <span>{report.annotations.length} 处批注</span>
+                          <span className="sm:hidden">· {formatDate(report.createdAt)}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-baseline justify-end gap-1.5 sm:justify-start">
+                        <span className="num text-[23px] leading-none text-ink">
+                          {formatScore(report.score.total)}
+                        </span>
+                        <span className="text-[13px] text-ink-mute">/ {report.meta.maxScore}</span>
+                        <span className="ml-1 hidden text-[13px] text-ink-mute lg:inline">
+                          {report.score.band}
+                        </span>
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        className="hidden text-ink-mute/30 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-jade sm:block"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="mt-10">
+              <div className="flex items-baseline justify-between border-b border-line pb-2.5">
+                <h2 className="text-[15px] font-medium text-ink-mute">趋势与高频问题</h2>
+                <span className="text-[13px] text-ink-mute">基于已保存的报告</span>
+              </div>
+              <div className="mt-4">
+                <div className="grid gap-6 lg:grid-cols-[1.45fr_1fr]">
+              <section className="rounded-2xl border border-line bg-white p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="eyebrow">
@@ -331,7 +413,7 @@ export default function HistoryPage() {
                 />
               </section>
 
-              <section className="border border-line bg-paper-light/55 p-5 sm:p-6">
+              <section className="rounded-2xl border border-line bg-paper-light/50 p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <p className="eyebrow">
                     <PenLine size={12} /> 高频问题
@@ -380,86 +462,7 @@ export default function HistoryPage() {
                 )}
               </section>
             </div>
-
-            <section className="mt-12">
-              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
-                <h2 className="display text-[22px]">
-                  全部记录
-                  <span className="ml-2 text-[14px] font-normal text-ink-mute">
-                    {filteredReports.length} / {reports.length}
-                  </span>
-                </h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <Search
-                      size={14}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute"
-                    />
-                    <input
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="搜索题目 / 试卷 / 题型"
-                      aria-label="搜索写作记录"
-                      className="field !h-9 w-full !py-0 pl-9 text-[13.5px] sm:w-56"
-                    />
-                  </div>
-                  <span className="text-[13px] text-ink-mute">按时间倒序</span>
-                </div>
               </div>
-
-              {filteredReports.length === 0 ? (
-                <div className="border-b border-line/70 py-12 text-center">
-                  <p className="text-[15px] font-medium text-ink">没有匹配的记录</p>
-                  <p className="mt-1 text-[13.5px] text-ink-mute">换一个关键词试试。</p>
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    className="mt-3 text-[13px] font-medium text-jade hover:underline"
-                  >
-                    清空搜索
-                  </button>
-                </div>
-              ) : (
-                <div className="border-t border-line/60">
-                  {filteredReports.map((report) => (
-                    <Link
-                      key={report.id}
-                      href={`/report/${report.id}`}
-                      className="group grid grid-cols-[1fr_auto] items-center gap-4 border-b border-line/70 py-4 transition-colors hover:bg-paper-light/50 sm:grid-cols-[92px_1fr_140px_28px]"
-                    >
-                      <span className="hidden text-[13px] text-ink-mute sm:block">
-                        {formatDate(report.createdAt)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[15.5px] font-medium text-ink transition-colors group-hover:text-jade">
-                          {report.meta.topicTitle}
-                        </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-ink-mute">
-                          <span>{examLabel(report.meta.exam)}</span>
-                          <span className="text-ink-mute/40">/</span>
-                          <span>{kindLabel(report.meta.kind)}</span>
-                          <span className="text-ink-mute/40">/</span>
-                          <span>{report.annotations.length} 处批注</span>
-                          <span className="sm:hidden">· {formatDate(report.createdAt)}</span>
-                        </p>
-                      </div>
-                      <div className="flex items-baseline justify-end gap-1.5 sm:justify-start">
-                        <span className="num text-[22px] leading-none text-ink">
-                          {formatScore(report.score.total)}
-                        </span>
-                        <span className="text-[13px] text-ink-mute">/ {report.meta.maxScore}</span>
-                        <span className="ml-1 hidden text-[13px] text-ink-mute lg:inline">
-                          {report.score.band}
-                        </span>
-                      </div>
-                      <ChevronRight
-                        size={16}
-                        className="hidden text-ink-mute/30 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-jade sm:block"
-                      />
-                    </Link>
-                  ))}
-                </div>
-              )}
             </section>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-mute">

@@ -318,9 +318,11 @@ export default function ReportPage() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="btn btn-ghost !px-3 !py-2 text-[13.5px]"
+              title="打印或导出 PDF"
+              aria-label="打印或导出 PDF"
+              className="btn-quiet !px-2.5"
             >
-              <Printer size={13} /> 打印 / PDF
+              <Printer size={15} />
             </button>
             {confirmDelete ? (
               <span className="flex items-center gap-1 border border-cinnabar/35 px-2 py-1">
