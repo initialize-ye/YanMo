@@ -10,6 +10,8 @@ import {
   ArrowUpRight,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ClipboardCopy,
   Clock3,
   Eye,
@@ -80,9 +82,21 @@ export default function ReportPage() {
     setFilter("language");
     setShowCorrections(true);
     setPractice(false);
-    setRevealed(new Set());
-    setDrafts({});
     setActiveNote(null);
+    let restoredRevealed = new Set<string>();
+    let restoredDrafts: Record<string, string> = {};
+    try {
+      const raw = sessionStorage.getItem(`yanmo.practice.${id}`);
+      if (raw) {
+        const saved = JSON.parse(raw) as { drafts?: Record<string, string>; revealed?: string[] };
+        if (saved?.drafts && typeof saved.drafts === "object") restoredDrafts = saved.drafts;
+        if (Array.isArray(saved?.revealed)) restoredRevealed = new Set(saved.revealed);
+      }
+    } catch {
+      // 忽略损坏的草稿数据
+    }
+    setDrafts(restoredDrafts);
+    setRevealed(restoredRevealed);
     setReport(loadReport(id));
     setLoading(false);
   }, [id]);
@@ -186,11 +200,42 @@ export default function ReportPage() {
     if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  // 练习草稿按报告存在 sessionStorage，切换页面不会丢，关闭应用后自动清空。
+  const savePractice = (nextDrafts: Record<string, string>, nextRevealed: Set<string>) => {
+    try {
+      sessionStorage.setItem(
+        `yanmo.practice.${id}`,
+        JSON.stringify({ drafts: nextDrafts, revealed: Array.from(nextRevealed) })
+      );
+    } catch {
+      // 存储不可用时不影响练习
+    }
+  };
+
+  const updateDraft = (annotationId: string, value: string) => {
+    setDrafts((current) => {
+      const next = { ...current, [annotationId]: value };
+      savePractice(next, revealed);
+      return next;
+    });
+  };
+
+  const activeIndex = filteredAnnotations.findIndex((item) => item.id === activeNote);
+
+  const stepNote = (delta: number) => {
+    if (!filteredAnnotations.length) return;
+    const base = activeIndex === -1 ? (delta > 0 ? -1 : filteredAnnotations.length) : activeIndex;
+    const nextIndex = Math.min(filteredAnnotations.length - 1, Math.max(0, base + delta));
+    selectNote(filteredAnnotations[nextIndex].id);
+  };
+
   const togglePractice = () => {
     const next = !practice;
     setPractice(next);
-    setRevealed(new Set());
+    const clearedRevealed = new Set<string>();
+    setRevealed(clearedRevealed);
     setShowCorrections(!next);
+    savePractice(drafts, clearedRevealed);
   };
 
   const toggleReveal = (annotationId: string) => {
@@ -198,6 +243,7 @@ export default function ReportPage() {
       const next = new Set(current);
       if (next.has(annotationId)) next.delete(annotationId);
       else next.add(annotationId);
+      savePractice(drafts, next);
       return next;
     });
   };
@@ -206,6 +252,7 @@ export default function ReportPage() {
     setRevealed((current) => {
       const next = new Set(current);
       filteredAnnotations.forEach((item) => next.add(item.id));
+      savePractice(drafts, next);
       return next;
     });
   };
@@ -259,6 +306,9 @@ export default function ReportPage() {
 
   const handleDelete = () => {
     deleteReport(report.id);
+    try {
+      sessionStorage.removeItem(`yanmo.practice.${report.id}`);
+    } catch {}
     router.push("/history");
   };
 
@@ -558,7 +608,35 @@ export default function ReportPage() {
                         : "复制语言错误"}
                   </button>
                 )}
-                <span className="text-[13px] text-ink-mute">按原文顺序</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-white pl-2.5 pr-1 py-0.5">
+                  <span className="num text-[13px] text-ink-mute">
+                    {activeIndex >= 0
+                      ? `${activeIndex + 1} / ${filteredAnnotations.length}`
+                      : `共 ${filteredAnnotations.length} 处`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => stepNote(-1)}
+                    disabled={!filteredAnnotations.length || activeIndex === 0}
+                    aria-label="上一处批注"
+                    title="上一处"
+                    className="grid h-6 w-6 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stepNote(1)}
+                    disabled={
+                      !filteredAnnotations.length || activeIndex === filteredAnnotations.length - 1
+                    }
+                    aria-label="下一处批注"
+                    title="下一处"
+                    className="grid h-6 w-6 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </span>
               </div>
             </div>
             <p className="mt-2 max-w-2xl text-[14.5px] leading-6 text-ink-mute">
@@ -597,6 +675,14 @@ export default function ReportPage() {
                 当前 {filteredAnnotations.length} 处
               </span>
             </div>
+            {practice && (
+              <div className="mt-3 flex items-start gap-2 border border-jade/25 bg-[#e8f0fe] px-3.5 py-2.5 text-[13.5px] leading-6 text-ink-soft">
+                <EyeOff size={14} className="mt-0.5 shrink-0 text-jade" />
+                <p>
+                  修改建议已隐藏。先在每处写下自己的改法，再点「对照参考修改」。草稿会留在本机，关闭应用后清空。
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 grid gap-8 lg:grid-cols-[1.28fr_0.72fr]">
@@ -694,12 +780,7 @@ export default function ReportPage() {
                     {practice && (
                       <textarea
                         value={drafts[annotation.id] ?? ""}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [annotation.id]: event.target.value
-                          }))
-                        }
+                        onChange={(event) => updateDraft(annotation.id, event.target.value)}
                         placeholder="先自己改一遍，再对照参考答案…"
                         className="field mt-3 min-h-[84px] resize-y !py-2 text-[14px] leading-6"
                         aria-label="我的修改"
@@ -943,6 +1024,13 @@ export default function ReportPage() {
             <ArrowLeft size={14} /> 返回写作档案
           </Link>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="btn-quiet !px-3 text-[13.5px]"
+            >
+              <ChevronUp size={13} /> 回到顶部
+            </button>
             <button
               type="button"
               onClick={() => void copySummary()}
