@@ -539,7 +539,9 @@ async function createWindow(url) {
 
   mainWindow.webContents.setWindowOpenHandler(({ url: target }) => {
     if (target.startsWith(`http://127.0.0.1:${PORT}`)) {
-      return { action: "allow" };
+      // 内部链接不另开一个没有菜单和状态的新窗口，直接在当前窗口打开。
+      if (mainWindow && !mainWindow.isDestroyed()) void mainWindow.loadURL(target);
+      return { action: "deny" };
     }
     if (/^https?:/i.test(target)) void shell.openExternal(target);
     return { action: "deny" };

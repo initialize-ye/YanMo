@@ -797,7 +797,12 @@ export default function GradePage() {
                   </div>
                 )}
 
-                <div className="mt-7">
+                <p className="mt-6 border-t border-line/70 pt-3 text-[13px] leading-6 text-ink-mute">
+                  提交后作文内容会发送到你配置的 AI 服务用于批改；研墨服务器不留存作文，报告仅保存在本机。
+                </p>
+
+                {/* 桌面端窗口高度有限，主按钮随页面滚动停靠在底部，随时可以提交。 */}
+                <div className="mt-3 lg:sticky lg:bottom-0 lg:z-20 lg:-mx-3 lg:bg-[#f8f9fa]/95 lg:px-3 lg:pb-3 lg:pt-2 lg:backdrop-blur-sm">
                   {needsSetup ? (
                     <Link
                       href="/settings"
@@ -842,9 +847,6 @@ export default function GradePage() {
                     </Link>
                   </div>
                 </div>
-                <p className="mt-3 text-[13px] leading-6 text-ink-mute">
-                  提交即表示同意将本次作文内容发送至你配置的 AI 服务用于批改；研墨服务器不留存作文，报告仅保存在你的浏览器中。
-                </p>
               </div>
 
               <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">

@@ -348,6 +348,14 @@ export default function SettingsPage() {
                   {testState === "success" && <Check size={14} className="mt-0.5" />}
                   {testState === "error" && <span className="mt-0.5 font-medium">!</span>}
                   <span>{testState === "testing" ? "正在连接 AI 服务…" : testMessage}</span>
+                  {testState === "success" && (
+                    <Link
+                      href="/grade"
+                      className="ml-auto shrink-0 font-medium text-jade hover:underline"
+                    >
+                      去批改 →
+                    </Link>
+                  )}
                 </div>
               )}
 

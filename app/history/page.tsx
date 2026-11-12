@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -104,7 +104,7 @@ export default function HistoryPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFile = async (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     try {
       const raw = await file.text();
       const result = parseImportFile(raw);
@@ -126,7 +126,20 @@ export default function HistoryPage() {
       setPreview(null);
       setImportError(error instanceof Error ? error.message : "读取文件失败。");
     }
-  };
+  }, []);
+
+  // 把导出的备份 JSON 直接拖进窗口即可导入。
+  useEffect(() => {
+    const onDrop = (event: DragEvent) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      if (file.type !== "application/json" && !/\.json$/i.test(file.name)) return;
+      event.preventDefault();
+      void handleFile(file);
+    };
+    window.addEventListener("drop", onDrop);
+    return () => window.removeEventListener("drop", onDrop);
+  }, [handleFile]);
 
   const confirmImport = () => {
     if (!preview) return;
@@ -193,6 +206,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={pickFile}
+              title="选择备份文件，或把导出的 JSON 拖进窗口"
               className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]"
             >
               <Upload size={15} /> 导入

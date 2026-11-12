@@ -16,7 +16,8 @@ const CHECKLIST = [
 
 export function SelfCheck({ text, kind }: { text: string; kind: EssayKind }) {
   const result = useMemo(() => runSelfCheck(text, kind), [text, kind]);
-  const [open, setOpen] = useState(true);
+  // 默认收起，避免把提交按钮挤到屏幕外；有明显提示时用户仍能看到入口。
+  const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<boolean[]>(() => CHECKLIST.map(() => false));
 
   const hints = useMemo(() => {
