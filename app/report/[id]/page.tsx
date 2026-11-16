@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -111,6 +111,28 @@ export default function ReportPage() {
     if (!report) return;
     document.title = `${report.meta.topicTitle} · 批改报告 · 研墨 AI`;
   }, [report]);
+
+  // 键盘快捷：按 [ / ] 切换上一处 / 下一处批注（输入框内不拦截）。
+  const stepNoteRef = useRef<(delta: number) => void>(() => {});
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) {
+        return;
+      }
+      if (event.key === "[") {
+        event.preventDefault();
+        stepNoteRef.current(-1);
+      } else if (event.key === "]") {
+        event.preventDefault();
+        stepNoteRef.current(1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   if (loading) {
     return (
@@ -241,6 +263,7 @@ export default function ReportPage() {
     const nextIndex = Math.min(filteredAnnotations.length - 1, Math.max(0, base + delta));
     selectNote(filteredAnnotations[nextIndex].id);
   };
+  stepNoteRef.current = stepNote;
 
   const togglePractice = () => {
     const next = !practice;
@@ -642,7 +665,7 @@ export default function ReportPage() {
                   </button>
                 )}
                 <span className="inline-flex items-center gap-1 rounded-full border border-line bg-white pl-2.5 pr-1 py-0.5">
-                  <span className="num text-[13px] text-ink-mute">
+                  <span className="num text-[13px] text-ink-mute" role="status" aria-live="polite">
                     {activeIndex >= 0
                       ? `${activeIndex + 1} / ${filteredAnnotations.length}`
                       : `共 ${filteredAnnotations.length} 处`}
@@ -769,6 +792,7 @@ export default function ReportPage() {
                   <span className="redline">红色波浪线</span> 需要修改
                 </span>
                 <span>点击句子或编号查看批注</span>
+                <span className="hidden sm:inline">按 [ ] 切换上一处 / 下一处</span>
                 {showCorrections && <span className="text-jade">绿色文字 = 建议修改</span>}
               </div>
             </div>
