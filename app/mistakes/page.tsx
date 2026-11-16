@@ -19,6 +19,7 @@ import { CATEGORY_LABELS, SEVERITY_LABELS } from "@/lib/constants";
 import { collectMistakes, type MistakeItem } from "@/lib/mistakes";
 import { loadReports } from "@/lib/storage";
 import { cn, formatDate } from "@/lib/utils";
+import { copyText } from "@/lib/clipboard";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
 
 type FilterKey = "all" | ErrorCategory;
@@ -387,7 +388,7 @@ function MistakeCard({
       item.explanation
     ];
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await copyText(lines.join("\n"));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {}

@@ -46,6 +46,7 @@ import {
   isLanguageError,
   sortAnnotationsByPosition
 } from "@/lib/utils";
+import { copyText } from "@/lib/clipboard";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
 
 type FilterKey = "language" | "all" | "other" | ErrorCategory;
@@ -337,7 +338,7 @@ export default function ReportPage() {
       ...suggestions.slice(0, 3).map((item, index) => `${index + 1}. ${item.title}：${item.action}`)
     ];
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await copyText(lines.join("\n"));
       setCopyState("copied");
       window.setTimeout(() => setCopyState("idle"), 2200);
     } catch {
@@ -359,7 +360,7 @@ export default function ReportPage() {
       )
     ];
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await copyText(lines.join("\n"));
       setErrorCopyState("copied");
       window.setTimeout(() => setErrorCopyState("idle"), 2200);
     } catch {
@@ -375,7 +376,7 @@ export default function ReportPage() {
       item.explanation
     ];
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await copyText(lines.join("\n"));
       setNoteCopyId(item.id);
       window.setTimeout(() => {
         setNoteCopyId((current) => (current === item.id ? null : current));
