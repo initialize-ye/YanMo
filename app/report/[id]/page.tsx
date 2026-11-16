@@ -374,7 +374,7 @@ export default function ReportPage() {
               onClick={() => window.print()}
               title="打印或导出 PDF（Ctrl + P）"
               aria-label="打印或导出 PDF"
-              className="btn-quiet !px-2.5"
+              className="btn-quiet inline-flex min-h-11 min-w-11 items-center justify-center !px-2.5"
             >
               <Printer size={15} />
             </button>
@@ -400,7 +400,7 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="btn-quiet !px-2"
+                className="btn-quiet inline-flex min-h-11 min-w-11 items-center justify-center !px-2"
                 aria-label="删除报告"
               >
                 <Trash2 size={14} />
@@ -887,6 +887,8 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => setShowModel((value) => !value)}
+                aria-expanded={showModel}
+                aria-controls="model-essay"
                 className="text-[13.5px] font-medium text-ink-mute hover:text-jade"
               >
                 {showModel ? "收起范文" : "展开范文"}
@@ -894,7 +896,7 @@ export default function ReportPage() {
             </div>
 
             {showModel && (
-              <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_270px]">
+              <div id="model-essay" className="mt-6 grid gap-6 lg:grid-cols-[1fr_270px]">
                 <div className="paper-card p-6 sm:p-8">
                   <p className="essay-body !text-[16px] !leading-[2]">{modelEssay.text}</p>
                 </div>

@@ -728,6 +728,8 @@ export default function GradePage() {
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      tabIndex={-1}
+                      aria-hidden="true"
                       className="hidden"
                       onChange={(event) => {
                         const selected = event.target.files?.[0];
@@ -740,6 +742,8 @@ export default function GradePage() {
                       type="file"
                       accept="image/*"
                       capture="environment"
+                      tabIndex={-1}
+                      aria-hidden="true"
                       className="hidden"
                       onChange={(event) => {
                         const selected = event.target.files?.[0];
