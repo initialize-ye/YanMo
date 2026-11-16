@@ -32,12 +32,14 @@ function readJson<T>(key: string): T | null {
   }
 }
 
-function writeJson(key: string, value: unknown): void {
-  if (!hasStorage()) return;
+function writeJson(key: string, value: unknown): boolean {
+  if (!hasStorage()) return false;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // 存储空间不足时静默失败，页面仍可正常使用
+    // 存储空间不足时返回 false，调用方可据此提示用户，避免"以为已保存"。
+    return false;
   }
 }
 
@@ -53,13 +55,14 @@ export function loadReport(id: string): GradeResult | null {
   return loadReports().find((report) => report.id === id) ?? null;
 }
 
-export function saveReport(report: GradeResult): void {
+export function saveReport(report: GradeResult): boolean {
   const reports = loadReports().filter((item) => item.id !== report.id);
   reports.unshift(report);
-  writeJson(REPORTS_KEY, reports.slice(0, MAX_REPORTS));
+  const ok = writeJson(REPORTS_KEY, reports.slice(0, MAX_REPORTS));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("yanmo:reports-changed"));
   }
+  return ok;
 }
 
 export function deleteReport(id: string): void {

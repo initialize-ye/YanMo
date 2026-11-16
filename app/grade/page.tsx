@@ -425,7 +425,15 @@ export default function GradePage() {
 
     try {
       const result = await apiGrade(request, aiConfig);
-      saveReport(result);
+      const saved = saveReport(result);
+      if (!saved) {
+        setGradingError({
+          message:
+            "批改已完成，但本机存储空间不足，报告未能保存。请到设置页清理旧报告后重新批改（草稿已保留）。",
+          code: "STORAGE_FULL"
+        });
+        return;
+      }
       clearDraft();
       setDraftRestored(false);
       router.push(`/report/${result.id}`);
@@ -1618,7 +1626,9 @@ function GradingPanel({
                         ? "还没有配置 AI。到设置页填入 Key 后即可继续。"
                         : error.code === "AI_QUOTA"
                           ? "AI 账户余额或额度不足，请到服务商后台充值后重试。"
-                          : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
+                          : error.code === "STORAGE_FULL"
+                            ? "到设置页「数据与隐私」清理旧报告后重试；本机最多保留 100 篇，草稿已保留。"
+                            : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
                 </p>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
