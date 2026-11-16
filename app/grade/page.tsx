@@ -777,13 +777,27 @@ export default function GradePage() {
                         <span className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">
                           文字稿 · 直接输入
                         </span>
-                        <button
-                          type="button"
-                          onClick={loadSampleText}
-                          className="text-[13px] font-medium text-jade underline decoration-jade/30 underline-offset-4"
-                        >
-                          填入样文
-                        </button>
+                        <div className="flex items-center gap-3">
+                          {text.trim().length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setText("");
+                                setError(null);
+                              }}
+                              className="text-[13px] font-medium text-ink-mute transition-colors hover:text-cinnabar"
+                            >
+                              清空
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={loadSampleText}
+                            className="text-[13px] font-medium text-jade underline decoration-jade/30 underline-offset-4"
+                          >
+                            填入样文
+                          </button>
+                        </div>
                       </div>
                       <textarea
                         value={text}
