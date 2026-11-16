@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, screen, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, screen, shell, nativeTheme } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const net = require("node:net");
@@ -23,6 +23,10 @@ let logStream = null;
 let updateCheckInFlight = false;
 
 app.setName("YanMo");
+// Windows 任务栏/通知的应用标识，保证分组与更新提示归到同一图标。
+app.setAppUserModelId("com.yanmo.app");
+// 应用为浅色纸质主题，固定原生主题为浅色，避免系统深色模式下滚动条、右键菜单等错配。
+nativeTheme.themeSource = "light";
 app.setPath("userData", path.join(app.getPath("appData"), "YanMo"));
 const LOG_DIR = path.join(app.getPath("userData"), "logs");
 const LOG_FILE = path.join(LOG_DIR, "server.log");
@@ -609,7 +613,10 @@ async function createWindow(url) {
   });
 
   // 页面加载失败时给出可操作的提示，而不是空白窗口。
-  mainWindow.webContents.on("did-fail-load", (_event, code, description, validatedURL) => {
+  mainWindow.webContents.on("did-fail-load", (_event, code, description, validatedURL, isMainFrame) => {
+    // 忽略子框架/子资源失败，以及被新导航取消产生的 ERR_ABORTED（-3），这些属正常。
+    if (!isMainFrame) return;
+    if (code === -3) return;
     appendLog(`\n[did-fail-load] ${code} ${description} ${validatedURL}\n`);
     if (CAPTURE_PATH) return;
     closeSplash();
