@@ -133,6 +133,12 @@ p {
   border-radius: 4px;
 }
 
+/* 主色按钮背景本身就是翠蓝，焦点环改用深色，对比更清晰。 */
+.btn-primary:focus-visible,
+.btn-jade:focus-visible {
+  outline-color: var(--ink);
+}
+
 @layer components {
   .wrap {
     width: 100%;

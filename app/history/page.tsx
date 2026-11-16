@@ -361,7 +361,7 @@ export default function HistoryPage() {
                         type="button"
                         onClick={() => updateQuery("")}
                         aria-label="清空搜索"
-                        className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink"
+                        className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink"
                       >
                         <X size={12} />
                       </button>
