@@ -900,8 +900,7 @@ export default function ReportPage() {
                       </button>
                     </div>
 
-                    {!collapseNotes && (
-                      <>
+                    <div className={collapseNotes ? "hidden print:block" : undefined}>
                     <div className="mt-3">
                       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-mute/80">
                         原句
@@ -956,8 +955,7 @@ export default function ReportPage() {
                         )}
                       </div>
                     )}
-                      </>
-                    )}
+                    </div>
                   </article>
                 ))
               ) : (
