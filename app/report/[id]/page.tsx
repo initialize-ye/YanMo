@@ -555,13 +555,15 @@ export default function ReportPage() {
                       <span className="text-[13px] text-ink-mute"> /{dimensionMax}</span>
                     </span>
                   </div>
-                  <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-paper-deep">
+                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-paper-deep">
                     <span
                       className={cn(
                         "block h-full rounded-full",
                         dimension.score >= 7.5 ? "bg-jade" : dimension.score >= 6 ? "bg-gold" : "bg-cinnabar"
                       )}
-                      style={{ width: `${dimension.score * 10}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (dimension.score / dimensionMax) * 100))}%`
+                      }}
                     />
                   </div>
                   {!compact && (
