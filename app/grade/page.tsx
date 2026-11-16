@@ -787,6 +787,7 @@ export default function GradePage() {
                       </div>
                       <textarea
                         value={text}
+                        aria-label="作文文字稿"
                         onChange={(event) => setText(event.target.value)}
                         onKeyDown={(event) => {
                           if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {

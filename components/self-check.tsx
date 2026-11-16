@@ -56,6 +56,7 @@ export function SelfCheck({ text, kind }: { text: string; kind: EssayKind }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-controls="self-check-panel"
         className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3.5 text-left"
       >
         <span className="inline-flex items-center gap-2 text-[14px] font-medium text-ink">
@@ -68,7 +69,7 @@ export function SelfCheck({ text, kind }: { text: string; kind: EssayKind }) {
       </button>
 
       {open && (
-        <div className="border-t border-line px-4 py-4">
+        <div id="self-check-panel" className="border-t border-line px-4 py-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               ["词数", `${result.words}`, `建议 ${result.wordRange[0]}–${result.wordRange[1]}`],
@@ -92,8 +93,8 @@ export function SelfCheck({ text, kind }: { text: string; kind: EssayKind }) {
             {hints.length ? (
               <>
                 <ul className="space-y-2">
-                  {hints.slice(0, 6).map((hint) => (
-                    <li key={hint} className="flex gap-2 text-[13.5px] leading-6 text-ink-soft">
+                  {hints.slice(0, 6).map((hint, index) => (
+                    <li key={`${index}-${hint}`} className="flex gap-2 text-[13.5px] leading-6 text-ink-soft">
                       <AlertTriangle size={14} className="mt-1 shrink-0 text-gold" />
                       <span>{hint}</span>
                     </li>
