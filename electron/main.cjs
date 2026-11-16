@@ -835,3 +835,21 @@ process.on("unhandledRejection", (reason) => {
   const text = reason instanceof Error ? reason.stack || reason.message : String(reason);
   appendLog(`\n[unhandledRejection] ${text}\n`);
 });
+
+// 主进程未捕获异常：写日志并给出可见提示后退出，避免无征兆闪退。
+process.on("uncaughtException", (error) => {
+  const text = error instanceof Error ? error.stack || error.message : String(error);
+  appendLog(`\n[uncaughtException] ${text}\n`);
+  try {
+    if (app.isReady()) {
+      dialog.showErrorBox(
+        "研墨 AI 出现异常",
+        `程序遇到未处理的错误，即将退出。\n\n${error?.message ?? text}`
+      );
+    }
+  } catch {}
+  try {
+    stopServer();
+  } catch {}
+  app.exit(1);
+});
