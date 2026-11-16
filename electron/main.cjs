@@ -172,7 +172,9 @@ function createSplash() {
       resizable: false,
       show: false,
       center: true,
-      skipTaskbar: false,
+      skipTaskbar: true,
+      // 启动瞬间不抢占前台焦点，等主窗口就绪再显示，避免打断用户当前操作。
+      focusable: false,
       alwaysOnTop: true,
       backgroundColor: "#f8f9fa",
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
@@ -730,6 +732,12 @@ async function createWindow(url) {
 
 async function bootstrap() {
   prepareLog();
+  appendLog(
+    `\n[start] v${app.getVersion()} electron=${process.versions.electron} node=${process.versions.node} packaged=${app.isPackaged}\n`
+  );
+  try {
+    appendLog(`[start] serverDir=${getServerDir()} port=${PORT}\n`);
+  } catch {}
   buildMenu();
   createSplash();
   const url = await startServer();
