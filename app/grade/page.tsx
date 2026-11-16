@@ -806,7 +806,11 @@ export default function GradePage() {
                         <span className="text-ink-mute">· {wordRangeHint}</span>
                       </span>
                       {text.trim().length > 0 && text.trim().length < 40 && (
-                        <span className="inline-flex items-center gap-1 text-gold">
+                        <span
+                          role="status"
+                          aria-live="polite"
+                          className="inline-flex items-center gap-1 text-gold"
+                        >
                           还需 {40 - text.trim().length} 字才能提交
                         </span>
                       )}
