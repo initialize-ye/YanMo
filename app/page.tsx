@@ -3,6 +3,7 @@ import { ArrowUpRight, Check, PenLine } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FirstRunHint } from "@/components/first-run-hint";
+import { RecentReportLink } from "@/components/recent-report-link";
 
 const DIMENSIONS = [
   { label: "内容", score: "7.5", width: "75%", tone: "bg-jade" },
@@ -142,6 +143,7 @@ export default function HomePage() {
               <p className="mt-1.5 text-[14.5px] leading-6 text-ink-mute">
                 支持照片和文字稿，报告保存在本机，随时回看。
               </p>
+              <RecentReportLink />
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
               <Link href="/grade" className="btn btn-primary !px-5 !py-3">
