@@ -693,7 +693,12 @@ export default function GradePage() {
                           </span>
                           <h2 className="display mt-6 text-[26px] text-ink">上传作文照片</h2>
                           <p className="mt-2.5 max-w-sm text-[15px] leading-7 text-ink-mute">
-                            拖入图片、Ctrl+V 粘贴，或选择文件。请在光线均匀处拍摄，字迹尽量清晰。
+                            <span className="hidden md:inline">
+                              拖入图片、Ctrl+V 粘贴，或选择文件。请在光线均匀处拍摄，字迹尽量清晰。
+                            </span>
+                            <span className="md:hidden">
+                              拍摄或从相册选择图片。请在光线均匀处拍摄，字迹尽量清晰。
+                            </span>
                           </p>
                           <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
                             <button
