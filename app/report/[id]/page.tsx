@@ -480,33 +480,35 @@ export default function ReportPage() {
             </div>
           </div>
 
-          <div className="grid border-t border-line sm:grid-cols-2 lg:grid-cols-4">
-            {score.dimensions.map((dimension) => (
-              <div
-                key={dimension.key}
-                className="border-b border-line p-5 last:border-b-0 sm:border-b-0 sm:border-l sm:first:border-l-0"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-[14px] font-medium text-ink">{dimension.name}</span>
-                  <span className="num text-[18px] text-ink">
-                    {formatScore(dimension.score)}
-                    <span className="text-[13px] text-ink-mute"> /{dimensionMax}</span>
-                  </span>
+          <div className="border-t border-line p-4 sm:p-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {score.dimensions.map((dimension) => (
+                <div
+                  key={dimension.key}
+                  className="rounded-xl border border-line bg-paper-light/40 p-4"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[14px] font-medium text-ink">{dimension.name}</span>
+                    <span className="num text-[18px] text-ink">
+                      {formatScore(dimension.score)}
+                      <span className="text-[13px] text-ink-mute"> /{dimensionMax}</span>
+                    </span>
+                  </div>
+                  <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-paper-deep">
+                    <span
+                      className={cn(
+                        "block h-full rounded-full",
+                        dimension.score >= 7.5 ? "bg-jade" : dimension.score >= 6 ? "bg-gold" : "bg-cinnabar"
+                      )}
+                      style={{ width: `${dimension.score * 10}%` }}
+                    />
+                  </div>
+                  {!compact && (
+                    <p className="mt-3 text-[13.5px] leading-6 text-ink-mute">{dimension.comment}</p>
+                  )}
                 </div>
-                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-paper-deep">
-                  <span
-                    className={cn(
-                      "block h-full rounded-full",
-                      dimension.score >= 7.5 ? "bg-jade" : dimension.score >= 6 ? "bg-gold" : "bg-cinnabar"
-                    )}
-                    style={{ width: `${dimension.score * 10}%` }}
-                  />
-                </div>
-                {!compact && (
-                  <p className="mt-3 text-[13.5px] leading-6 text-ink-mute">{dimension.comment}</p>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           <p className="border-t border-line px-5 py-2.5 text-[13px] leading-5 text-ink-mute">
             四个维度各按 0–10 分评估，用于定位短板；总分按{examLabel(meta.exam)}
