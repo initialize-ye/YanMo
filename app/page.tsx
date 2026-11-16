@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, PenLine } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { FirstRunHint } from "@/components/first-run-hint";
 
 const DIMENSIONS = [
   { label: "内容", score: "7.5", width: "75%", tone: "bg-jade" },
@@ -14,6 +15,7 @@ export default function HomePage() {
     <>
       <SiteHeader />
       <main id="main-content" className="overflow-hidden">
+        <FirstRunHint />
         <section className="relative pb-16 pt-10 sm:pt-16 lg:pb-24 lg:pt-20">
           <div
             aria-hidden
