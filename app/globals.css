@@ -161,6 +161,26 @@ p {
     padding-inline: clamp(20px, 4vw, 40px);
   }
 
+  /* 键盘用户按 Tab 首下即出现「跳到主要内容」，可越过吸顶导航。 */
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    z-index: 100;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--jade);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    transform: translateY(-160%);
+    transition: transform 0.15s ease;
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+
   .display {
     font-family: var(--font-display);
     font-weight: 500;

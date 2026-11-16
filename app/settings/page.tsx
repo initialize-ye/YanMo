@@ -214,7 +214,7 @@ export default function SettingsPage() {
   return (
     <>
       <SiteHeader />
-      <main className="wrap pb-24 pt-8 sm:pt-10">
+      <main id="main-content" className="wrap pb-24 pt-8 sm:pt-10">
         <div className="border-b border-line pb-6">
           <p className="eyebrow">
             <span className="h-[6px] w-[6px] rounded-full bg-jade" /> 配置

@@ -20,7 +20,7 @@ export default function ErrorPage({
   return (
     <>
       <SiteHeader />
-      <main className="wrap py-24">
+      <main id="main-content" className="wrap py-24">
         <div className="mx-auto max-w-lg text-center">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-cinnabar/[0.08] text-cinnabar">
             <AlertTriangle size={24} />

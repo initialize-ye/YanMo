@@ -13,7 +13,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
-      <main className="overflow-hidden">
+      <main id="main-content" className="overflow-hidden">
         <section className="relative pb-16 pt-10 sm:pt-16 lg:pb-24 lg:pt-20">
           <div
             aria-hidden

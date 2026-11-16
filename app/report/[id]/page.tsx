@@ -150,7 +150,7 @@ export default function ReportPage() {
     return (
       <>
         <SiteHeader />
-        <main className="wrap py-16">
+        <main id="main-content" className="wrap py-16">
           <div className="skeleton h-4 w-28" />
           <div className="skeleton mt-6 h-9 w-2/3" />
           <div className="skeleton mt-3 h-4 w-1/3" />
@@ -168,7 +168,7 @@ export default function ReportPage() {
     return (
       <>
         <SiteHeader />
-        <main className="wrap py-24">
+        <main id="main-content" className="wrap py-24">
           <div className="mx-auto max-w-md text-center">
             <span className="seal mx-auto h-14 w-14 text-[20px]">失</span>
             <h1 className="display mt-7 text-3xl">没有找到这份报告</h1>
@@ -394,7 +394,7 @@ export default function ReportPage() {
   return (
     <>
       <SiteHeader />
-      <main className="wrap pb-24 pt-8 sm:pt-10">
+      <main id="main-content" className="wrap pb-24 pt-8 sm:pt-10">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <Link

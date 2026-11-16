@@ -40,6 +40,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <a href="#main-content" className="skip-link">
+          跳到主要内容
+        </a>
         {children}
         <DropGuard />
         <PWARegister />

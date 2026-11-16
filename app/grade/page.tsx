@@ -521,7 +521,7 @@ export default function GradePage() {
   return (
     <>
       <SiteHeader />
-      <main className="min-h-[70vh]">
+      <main id="main-content" className="min-h-[70vh]">
         <div className="wrap pb-24 pt-8 sm:pt-10">
           {stage === "compose" ? (
             <div className="flex flex-wrap items-end justify-between gap-5 border-b border-line pb-6">
