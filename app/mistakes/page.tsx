@@ -223,7 +223,7 @@ export default function MistakesPage() {
             </div>
 
             <div className="mt-5 flex flex-col gap-3 border-b border-line pb-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="按错误类型筛选">
                 {filterOptions.map((item) => {
                   const active = filter === item.key;
                   return (

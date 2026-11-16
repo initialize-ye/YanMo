@@ -715,7 +715,7 @@ export default function ReportPage() {
               默认只看语法、拼写和用词。红色波浪线标出错误位置，点击句子可跳到对应批注。
               打开练习模式后，修改建议会先隐藏，先自己改，再对照参考答案。
             </p>
-            <div className="mt-4 flex flex-wrap items-center gap-1.5 print-hide">
+            <div className="mt-4 flex flex-wrap items-center gap-1.5 print-hide" role="group" aria-label="按类型筛选批注">
               {filters.map((item) => {
                 const active = filter === item.key;
                 return (

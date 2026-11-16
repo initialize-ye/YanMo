@@ -92,8 +92,8 @@ export default function HomePage() {
                   together.
                 </p>
 
-                <div className="mt-4 border-l-2 border-cinnabar/40 pl-3">
-                  <p className="text-[14px] leading-6 text-cinnabar">
+                <div className="mt-4 border-l-2 border-jade/40 pl-3">
+                  <p className="text-[14px] leading-6 text-ink-soft">
                     两个谓语挤在一个句子里。可以改成{" "}
                     <span className="font-medium text-jade">depicts two men climbing</span>。
                   </p>
