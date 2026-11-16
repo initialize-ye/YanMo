@@ -881,31 +881,33 @@ export default function ReportPage() {
                         />
                         {SEVERITY_LABELS[annotation.severity]}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => void copyNote(annotation)}
-                        title="复制这处批注"
-                        aria-label="复制这处批注"
-                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
-                      >
-                        {noteCopyId === annotation.id ? (
-                          <>
-                            <Check size={12} className="text-jade" /> 已复制
-                          </>
-                        ) : (
-                          <>
-                            <ClipboardCopy size={12} /> 复制
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => locateInEssay(annotation.id)}
-                        title="回到原文中的这处标记"
-                        className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
-                      >
-                        <ArrowUp size={12} /> 原文定位
-                      </button>
+                      <div className="ml-auto flex items-center gap-3 print-hide">
+                        <button
+                          type="button"
+                          onClick={() => void copyNote(annotation)}
+                          title="复制这处批注"
+                          aria-label="复制这处批注"
+                          className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade"
+                        >
+                          {noteCopyId === annotation.id ? (
+                            <>
+                              <Check size={12} className="text-jade" /> 已复制
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardCopy size={12} /> 复制
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => locateInEssay(annotation.id)}
+                          title="回到原文中的这处标记"
+                          className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade"
+                        >
+                          <ArrowUp size={12} /> 原文定位
+                        </button>
+                      </div>
                     </div>
 
                     <div className={collapseNotes ? "hidden print:block" : undefined}>
