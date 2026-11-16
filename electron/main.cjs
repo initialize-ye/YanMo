@@ -21,6 +21,7 @@ let serverProcess = null;
 let serverLogs = "";
 let logStream = null;
 let updateCheckInFlight = false;
+let isQuitting = false;
 
 app.setName("YanMo");
 // Windows 任务栏/通知的应用标识，保证分组与更新提示归到同一图标。
@@ -294,6 +295,32 @@ async function startServer() {
   serverProcess.once("error", (error) => appendLog(`\n[server error] ${error.message}`));
   serverProcess.once("exit", (code, signal) => {
     appendLog(`\n[server exit] code=${code ?? "null"} signal=${signal ?? "null"}\n`);
+    // 非主动退出且非截图模式：本地服务意外停止，提示可重启，避免界面"假死"。
+    if (isQuitting || CAPTURE_PATH) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    void dialog
+      .showMessageBox(mainWindow, {
+        type: "error",
+        title: "本地服务已停止",
+        message: "研墨的本地服务意外停止",
+        detail: `退出代码 ${code ?? "null"}${signal ? `，信号 ${signal}` : ""}。可以尝试重新启动服务，数据保存在本机不会丢失。`,
+        buttons: ["重新启动服务", "退出"],
+        defaultId: 0,
+        cancelId: 1
+      })
+      .then(async (result) => {
+        if (result.response !== 0) {
+          app.quit();
+          return;
+        }
+        try {
+          const url = await startServer();
+          if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(url);
+        } catch (error) {
+          appendLog(`\n[restart failed] ${error.message}\n`);
+          dialog.showErrorBox("重启服务失败", String(error?.message ?? error));
+        }
+      });
   });
 
   const url = `http://127.0.0.1:${PORT}`;
@@ -735,6 +762,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
   stopServer();
   closeLog();
 });
