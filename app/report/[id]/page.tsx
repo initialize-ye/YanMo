@@ -706,9 +706,6 @@ export default function ReportPage() {
                   </button>
                 );
               })}
-              <span className="ml-auto text-[13px] text-ink-mute">
-                当前 {filteredAnnotations.length} 处
-              </span>
             </div>
             {practice && (
               <div className="mt-3 flex items-start gap-2 border border-jade/25 bg-[#e8f0fe] px-3.5 py-2.5 text-[13.5px] leading-6 text-ink-soft">
@@ -775,6 +772,14 @@ export default function ReportPage() {
             </div>
 
             <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-ink-mute">
+                  批注列表
+                </p>
+                <span className="num text-[12.5px] text-ink-mute">
+                  {filteredAnnotations.length} 处
+                </span>
+              </div>
               {filteredAnnotations.length ? (
                 filteredAnnotations.map((annotation, index) => (
                   <article
