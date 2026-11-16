@@ -114,6 +114,16 @@ export default function ReportPage() {
     document.title = `${report.meta.topicTitle} · 批改报告 · 研墨 AI`;
   }, [report]);
 
+  // 删除确认态下按 Esc 取消，避免误删报告。
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setConfirmDelete(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmDelete]);
+
   // 键盘快捷：按 [ / ] 切换上一处 / 下一处批注（输入框内不拦截）。
   const stepNoteRef = useRef<(delta: number) => void>(() => {});
   useEffect(() => {

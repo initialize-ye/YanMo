@@ -83,6 +83,16 @@ export default function SettingsPage() {
     document.title = "设置 · 研墨 AI";
   }, []);
 
+  // 清除确认态下按 Esc 取消，避免误触破坏性操作。
+  useEffect(() => {
+    if (!clearConfirm) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setClearConfirm(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [clearConfirm]);
+
   const activeSource = config ? "browser" : status?.serverConfigured ? "env" : "none";
   const activeModel = config?.model ?? status?.model ?? null;
   const profileMax = maxScoreFor(profile.exam, "essay");
