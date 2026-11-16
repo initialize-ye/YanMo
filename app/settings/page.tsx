@@ -156,6 +156,13 @@ export default function SettingsPage() {
     setTestMessage("");
   };
 
+  // 修改任一接口字段时清空上次测试结果，避免"连接成功"等旧状态误导。
+  const resetTestFeedback = () => {
+    setTestState((current) => (current === "idle" ? current : "idle"));
+    setTestMessage("");
+    setFormError(null);
+  };
+
   const updateProfile = (patch: Partial<UserProfile>) => {
     const next = { ...profile, ...patch };
     setProfile(next);
@@ -288,7 +295,10 @@ export default function SettingsPage() {
                     <input
                       type={showKey ? "text" : "password"}
                       value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
+                      onChange={(event) => {
+                        setApiKey(event.target.value);
+                        resetTestFeedback();
+                      }}
                       placeholder="sk-..."
                       autoComplete="off"
                       spellCheck={false}
@@ -314,7 +324,10 @@ export default function SettingsPage() {
                     <input
                       type="url"
                       value={baseUrl}
-                      onChange={(event) => setBaseUrl(event.target.value)}
+                      onChange={(event) => {
+                        setBaseUrl(event.target.value);
+                        resetTestFeedback();
+                      }}
                       placeholder="https://api.example.com/v1"
                       spellCheck={false}
                       className="field font-mono text-[13.5px]"
@@ -327,7 +340,10 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       value={model}
-                      onChange={(event) => setModel(event.target.value)}
+                      onChange={(event) => {
+                        setModel(event.target.value);
+                        resetTestFeedback();
+                      }}
                       placeholder="model-name"
                       spellCheck={false}
                       className="field font-mono text-[13.5px]"
