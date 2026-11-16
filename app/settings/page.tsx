@@ -55,6 +55,7 @@ export default function SettingsPage() {
   const [profileNote, setProfileNote] = useState(false);
 
   const [reportCount, setReportCount] = useState(0);
+  const [storageMb, setStorageMb] = useState<number | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
 
   useEffect(() => {
@@ -68,6 +69,17 @@ export default function SettingsPage() {
     setProfile(loadProfile());
     setReportCount(loadReports().length);
     void fetchAiStatus().then(setStatus);
+    // 估算本机已用存储，便于用户了解数据占用（不支持时静默跳过）。
+    if (typeof navigator !== "undefined" && navigator.storage?.estimate) {
+      navigator.storage
+        .estimate()
+        .then((estimate) => {
+          if (typeof estimate.usage === "number") {
+            setStorageMb(estimate.usage / (1024 * 1024));
+          }
+        })
+        .catch(() => {});
+    }
     document.title = "设置 · 研墨 AI";
   }, []);
 
@@ -651,7 +663,9 @@ AI_MODEL=qwen-vl-max-latest`}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[13.5px] text-ink-mute">存储</span>
-                  <span className="text-[13px] text-ink-soft">本机浏览器</span>
+                  <span className="text-[13px] text-ink-soft">
+                    {storageMb != null ? `本机 · 约 ${storageMb.toFixed(1)} MB` : "本机浏览器"}
+                  </span>
                 </div>
               </div>
             </div>
