@@ -227,14 +227,21 @@ export default function ReportPage() {
   const selectNote = (noteId: string) => {
     setActiveNote(noteId);
     const element = document.getElementById(`note-${noteId}`);
-    if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      // 键盘/读屏用户激活原文标记后，焦点转到对应批注卡片便于阅读。
+      element.focus({ preventScroll: true });
+    }
   };
 
   // 从右侧批注卡片反向定位到左侧原文标记（移动端尤其有用：先看建议再回原文）。
   const locateInEssay = (noteId: string) => {
     setActiveNote(noteId);
     const element = document.getElementById(`anchor-${noteId}`);
-    if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.focus({ preventScroll: true });
+    }
   };
 
   // 练习草稿按报告存在 sessionStorage，切换页面不会丢，关闭应用后自动清空。
@@ -837,6 +844,7 @@ export default function ReportPage() {
                   <article
                     key={annotation.id}
                     id={`note-${annotation.id}`}
+                    tabIndex={-1}
                     className={cn(
                       "scroll-mt-24 rounded-xl border border-l-[3px] border-line bg-white p-5 transition-colors",
                       annotation.severity === "high"
