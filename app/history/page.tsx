@@ -710,6 +710,13 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
         )}
       </svg>
       </div>
+      <ul className="sr-only">
+        {points.map((point) => (
+          <li key={point.id}>
+            {formatDate(point.date)}：{point.score}/{point.max} 分，得分率 {point.percent}%
+          </li>
+        ))}
+      </ul>
       {points.length === 1 && (
         <p className="mt-1 text-[13px] text-ink-mute">再批改一篇，就能看到趋势变化。</p>
       )}
