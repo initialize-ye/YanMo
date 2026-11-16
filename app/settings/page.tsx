@@ -677,6 +677,14 @@ AI_MODEL=qwen-vl-max-latest`}
                     {storageMb != null ? `本机 · 约 ${storageMb.toFixed(1)} MB` : "本机浏览器"}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[13.5px] text-ink-mute">版本</span>
+                  <span className="font-mono text-[13px] text-ink-soft">
+                    {process.env.NEXT_PUBLIC_APP_VERSION
+                      ? `v${process.env.NEXT_PUBLIC_APP_VERSION}`
+                      : "—"}
+                  </span>
+                </div>
               </div>
             </div>
 
