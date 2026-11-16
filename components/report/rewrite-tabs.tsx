@@ -93,7 +93,7 @@ export function RewriteTabs({ rewrites }: { rewrites: ParagraphRewrite[] }) {
 
       <div className="mt-3 flex items-start gap-2.5 border-l-2 border-jade/40 pl-3">
         <ArrowRight size={14} className="mt-1 shrink-0 text-jade" />
-        <p className="text-[14px] leading-6 text-ink-soft">{selected.note}</p>
+        <p className="max-w-[72ch] text-[14px] leading-6 text-ink-soft">{selected.note}</p>
       </div>
     </div>
   );

@@ -1113,7 +1113,7 @@ export default function ReportPage() {
               <article
                 key={`suggestion-${index}`}
                 className={cn(
-                  "grid gap-3 border-t border-line sm:grid-cols-[60px_1fr] sm:gap-5",
+                  "grid gap-3 border-t border-line sm:grid-cols-[60px_minmax(0,720px)] sm:gap-5",
                   compact ? "py-3" : "py-6"
                 )}
               >
