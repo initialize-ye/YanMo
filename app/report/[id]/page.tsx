@@ -1059,7 +1059,7 @@ export default function ReportPage() {
             </div>
 
             {showModel && (
-              <div id="model-essay" className="mt-6 grid gap-6 lg:grid-cols-[1fr_270px]">
+              <div id="model-essay" className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,720px)_minmax(260px,1fr)]">
                 <div className="paper-card p-6 sm:p-8">
                   <p className="essay-body !text-[16px] !leading-[2]">{modelEssay.text}</p>
                 </div>
