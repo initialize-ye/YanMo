@@ -33,7 +33,7 @@ export function FirstRunHint() {
   };
 
   return (
-    <div className="wrap">
+    <div className="wrap print-hide">
       <div className="mt-4 flex items-start gap-3 border border-jade/25 bg-[#e8f0fe] px-4 py-3 text-[14px] leading-6 text-ink-soft">
         <Sparkles size={15} className="mt-0.5 shrink-0 text-jade" />
         <p className="flex-1">

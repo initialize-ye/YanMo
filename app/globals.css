@@ -531,7 +531,8 @@ p {
     overflow: visible !important;
   }
 
-  .print-hide {
+  .print-hide,
+  .skip-link {
     display: none !important;
   }
 
