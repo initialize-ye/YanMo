@@ -196,6 +196,15 @@ export default function GradePage() {
   const options = targetOptions(exam, kind);
   const words = countWords(text);
   const [minWords, maxWords] = wordRangeFor(kind);
+  // 词数偏离建议区间时给出方向性提示：偏少提示还差多少，偏多提示超出多少。
+  const wordsOutOfRange = words > 0 && (words < minWords || words > maxWords);
+  const wordRangeHint =
+    words > 0 && words < minWords
+      ? `建议 ${minWords}–${maxWords} 词 · 还差 ${minWords - words} 词`
+      : words > maxWords
+        ? `建议 ${minWords}–${maxWords} 词 · 超出 ${words - maxWords} 词`
+        : `建议 ${minWords}–${maxWords} 词`;
+  const wordCountTone = words === 0 ? "text-ink-mute" : wordsOutOfRange ? "text-gold" : "text-jade";
 
   const configured = Boolean(aiConfig?.apiKey) || Boolean(status?.serverConfigured);
 
@@ -438,6 +447,14 @@ export default function GradePage() {
   };
 
   const loadSampleText = () => {
+    // 已有内容时先确认，避免一键「填入样文」把用户手打/识别的正文覆盖掉。
+    if (
+      text.trim() &&
+      text.trim() !== SAMPLE_ESSAY &&
+      !window.confirm("填入样文会覆盖当前已输入的正文，确定继续？")
+    ) {
+      return;
+    }
     setText(SAMPLE_ESSAY);
     setMode("text");
     setError(null);
@@ -627,8 +644,6 @@ export default function GradePage() {
                           : "border-[#c3d7f7] bg-white hover:border-jade/60 hover:bg-[#f8fbff]"
                       )}
                     >
-                      <CornerMarks />
-
                       {prepared ? (
                         <div className="relative w-full">
                           <div className="flex items-center justify-between gap-3 border-b border-line/70 px-1 pb-3">
@@ -781,10 +796,15 @@ export default function GradePage() {
                       />
                     </div>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13.5px]">
-                      <span className={cn("inline-flex items-center gap-1.5", words < minWords ? "text-gold" : "text-jade")}>
+                      <span className={cn("inline-flex items-center gap-1.5", wordCountTone)}>
                         {words} words
-                        <span className="text-ink-mute">· 建议 {minWords}–{maxWords} 词</span>
+                        <span className="text-ink-mute">· {wordRangeHint}</span>
                       </span>
+                      {text.trim().length > 0 && text.trim().length < 40 && (
+                        <span className="inline-flex items-center gap-1 text-gold">
+                          还需 {40 - text.trim().length} 字才能提交
+                        </span>
+                      )}
                     </div>
                     <SelfCheck text={text} kind={kind} />
                   </div>
@@ -801,8 +821,8 @@ export default function GradePage() {
                   提交后作文内容会发送到你配置的 AI 服务用于批改；研墨服务器不留存作文，报告仅保存在本机。
                 </p>
 
-                {/* 桌面端窗口高度有限，主按钮随页面滚动停靠在底部，随时可以提交。 */}
-                <div className="mt-3 lg:sticky lg:bottom-0 lg:z-20 lg:-mx-3 lg:bg-[#f8f9fa]/95 lg:px-3 lg:pb-3 lg:pt-2 lg:backdrop-blur-sm">
+                {/* 提交区跟随表单正常排布：不再视口悬浮，避免滚动时遮挡正文。 */}
+                <div className="mt-4">
                   {needsSetup ? (
                     <Link
                       href="/settings"
@@ -823,7 +843,7 @@ export default function GradePage() {
                       className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
                     >
                       <span className="flex items-center gap-2.5">
-                        {mode === "image" ? <ScanLine size={18} /> : <Settings2 size={18} />}
+                        {mode === "image" ? <ScanLine size={18} /> : <FileText size={18} />}
                         {mode === "image" ? "识别手写并继续" : "开始批改"}
                       </span>
                       <ArrowRight size={18} />
@@ -1194,7 +1214,7 @@ export default function GradePage() {
               </div>
 
               <div className="mt-7 grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
-                <div className="lg:sticky lg:top-[92px] lg:self-start">
+                <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
                   <div className="border border-line bg-white p-2">
                     {prepared && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1274,9 +1294,9 @@ export default function GradePage() {
                     )}
 
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[13px]">
-                      <span className={cn("inline-flex items-center gap-1.5", words < minWords ? "text-gold" : "text-jade")}>
+                      <span className={cn("inline-flex items-center gap-1.5", wordCountTone)}>
                         {words} words
-                        <span className="text-ink-mute">· 建议 {minWords}–{maxWords} 词</span>
+                        <span className="text-ink-mute">· {wordRangeHint}</span>
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -1352,7 +1372,7 @@ export default function GradePage() {
                       className="btn btn-primary w-full justify-between !px-5 !py-4 text-[15.5px]"
                     >
                       <span className="flex items-center gap-2.5">
-                        <Settings2 size={18} /> 确认文字，开始批改
+                        <Check size={18} /> 确认文字，开始批改
                       </span>
                       <ArrowRight size={18} />
                     </button>
@@ -1460,7 +1480,7 @@ function StepIndicator({ current }: { current: number }) {
               className={cn(
                 "grid h-7 w-7 place-items-center rounded-full border text-[13px] font-medium",
                 done
-                  ? "border-jade bg-jade text-white"
+                  ? "border-jade/30 bg-jade/[0.12] text-jade"
                   : active
                     ? "border-jade bg-jade text-white"
                     : "border-line bg-white text-ink-mute"
@@ -1485,10 +1505,6 @@ function StepIndicator({ current }: { current: number }) {
       })}
     </ol>
   );
-}
-
-function CornerMarks() {
-  return null;
 }
 
 function GradingPanel({

@@ -354,8 +354,18 @@ export default function HistoryPage() {
                       onChange={(event) => updateQuery(event.target.value)}
                       placeholder="搜索题目 / 试卷 / 题型"
                       aria-label="搜索写作记录"
-                      className="field !h-9 w-full !py-0 pl-9 text-[13.5px] sm:w-56"
+                      className="field !h-9 w-full !py-0 pl-9 pr-8 text-[13.5px] sm:w-56"
                     />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => updateQuery("")}
+                        aria-label="清空搜索"
+                        className="absolute right-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </div>
                   <span className="text-[13px] text-ink-mute">按时间倒序</span>
                 </div>
@@ -600,7 +610,13 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
 
   return (
     <div className="mt-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="历史作文得分率趋势">
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full min-w-[560px]"
+          role="img"
+          aria-label="历史作文得分率趋势"
+        >
         <defs>
           <linearGradient id="historyTrend" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1a73e8" stopOpacity="0.16" />
@@ -693,6 +709,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
           </>
         )}
       </svg>
+      </div>
       {points.length === 1 && (
         <p className="mt-1 text-[13px] text-ink-mute">再批改一篇，就能看到趋势变化。</p>
       )}

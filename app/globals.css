@@ -72,6 +72,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* 页面整体向下滚动留出吸顶导航的高度，锚点跳转不会被 header 遮住。 */
+  scroll-padding-top: 92px;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -457,6 +459,17 @@ p {
 @media print {
   body {
     background: #ffffff;
+  }
+
+  /* 打印 / 导出 PDF 时取消吸顶与内部滚动，避免长内容被裁掉。 */
+  [class*="sticky"] {
+    position: static !important;
+  }
+
+  [class*="max-h-"],
+  [class*="overflow-y-auto"] {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .print-hide {

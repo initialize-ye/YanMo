@@ -9,7 +9,8 @@ import {
   Check,
   Eye,
   EyeOff,
-  Search
+  Search,
+  X
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -211,9 +212,19 @@ export default function MistakesPage() {
                     value={query}
                     onChange={(event) => updateQuery(event.target.value)}
                     placeholder="搜索原句或修改建议"
-                    className="field !h-10 w-full !py-0 pl-9 text-[14px] sm:w-64"
+                    className="field !h-10 w-full !py-0 pl-9 pr-8 text-[14px] sm:w-64"
                     aria-label="搜索错题"
                   />
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => updateQuery("")}
+                      aria-label="清空搜索"
+                      className="absolute right-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -252,6 +263,18 @@ export default function MistakesPage() {
               <div className="mt-8 border border-line bg-paper-light/60 p-8 text-center">
                 <p className="text-[16px] font-medium text-ink">没有找到匹配的错题</p>
                 <p className="mt-2 text-[14px] text-ink-mute">换一个关键词，或切换到「全部」。</p>
+                {(filter !== "all" || query) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateFilter("all");
+                      updateQuery("");
+                    }}
+                    className="btn btn-ghost mt-4 !px-3.5 !py-2 text-[13.5px]"
+                  >
+                    清除筛选条件
+                  </button>
+                )}
               </div>
             ) : (
               <div className="mt-6 grid gap-4 lg:grid-cols-2">

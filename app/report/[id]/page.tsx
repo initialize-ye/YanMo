@@ -79,7 +79,6 @@ export default function ReportPage() {
 
   useEffect(() => {
     setLoading(true);
-    setFilter("language");
     setShowCorrections(true);
     setPractice(false);
     setActiveNote(null);
@@ -97,7 +96,12 @@ export default function ReportPage() {
     }
     setDrafts(restoredDrafts);
     setRevealed(restoredRevealed);
-    setReport(loadReport(id));
+    const loaded = loadReport(id);
+    setReport(loaded);
+    // 若本篇没有语言错误，默认落到「全部」，避免一进来就是个空列表。
+    const hasLanguageError =
+      loaded?.annotations.some((item) => isLanguageError(item.category)) ?? true;
+    setFilter(hasLanguageError ? "language" : "all");
     setLoading(false);
   }, [id]);
 
@@ -594,7 +598,7 @@ export default function ReportPage() {
                     全部显示
                   </button>
                 )}
-                {languageCount > 0 && (
+                {languageCount > 0 && !practice && (
                   <button
                     type="button"
                     onClick={() => void copyErrorList()}
@@ -650,7 +654,11 @@ export default function ReportPage() {
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => setFilter(item.key)}
+                    onClick={() => {
+                      setFilter(item.key);
+                      // 切换筛选时清空选中项，避免高亮/计数停留在被筛掉的批注上。
+                      setActiveNote(null);
+                    }}
                     aria-pressed={active}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors",
@@ -685,8 +693,8 @@ export default function ReportPage() {
             )}
           </div>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.28fr_0.72fr]">
-            <div className="lg:sticky lg:top-[92px] lg:self-start">
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1.28fr_0.72fr] print:block">
+            <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start print:static print:max-h-none print:overflow-visible">
               <div className="paper-card p-5 sm:p-8">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3.5">
                   <div className="flex items-center gap-2">
@@ -831,6 +839,15 @@ export default function ReportPage() {
                       ? "语言基本准确，可以切换到「全部」查看结构、语域或逻辑层面的建议。"
                       : "换一个筛选条件看看，或先参考上方的总评与训练建议。"}
                   </p>
+                  {filter !== "all" && sortedAnnotations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFilter("all")}
+                      className="btn btn-ghost mt-4 !px-3.5 !py-2 text-[13.5px]"
+                    >
+                      查看全部 {sortedAnnotations.length} 处
+                    </button>
+                  )}
                 </div>
               )}
             </div>

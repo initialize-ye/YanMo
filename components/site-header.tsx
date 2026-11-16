@@ -31,6 +31,16 @@ export function SiteHeader() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
+  // 移动端菜单展开时锁住背景滚动，避免菜单背后页面跟着滑动。
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   return (
     <header className="print-hide sticky top-0 z-40 border-b border-line/80 bg-white/95 backdrop-blur">
       <div className="wrap flex h-[68px] items-center justify-between gap-6">
@@ -70,8 +80,13 @@ export function SiteHeader() {
           >
             {open ? <X size={21} /> : <Menu size={21} />}
           </button>
-          <Link href="/grade" className="btn btn-primary !px-5 !py-2.5 text-[14px]">
-            批改一篇 <ArrowUpRight size={16} />
+          <Link
+            href="/grade"
+            aria-label="批改一篇"
+            className="btn btn-primary !px-3 !py-2.5 text-[14px] sm:!px-5"
+          >
+            <span className="hidden sm:inline">批改一篇</span>
+            <ArrowUpRight size={16} />
           </Link>
         </div>
       </div>
