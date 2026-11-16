@@ -1,13 +1,17 @@
 name: Build Windows Exe
 
 on:
-  workflow_dispatch:
+  # 每次 push 都构建桌面版 exe（任意分支/标签）
   push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+# 同一分支连续 push 时取消上一次未完成的构建，避免排队堆积
+concurrency:
+  group: windows-exe-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
