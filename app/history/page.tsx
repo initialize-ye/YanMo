@@ -600,7 +600,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
     .join(" ");
   const areaPath =
-    coords.length > 0
+    coords.length > 1
       ? `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padTop + innerHeight).toFixed(
           1
         )} L ${coords[0].x.toFixed(1)} ${(padTop + innerHeight).toFixed(1)} Z`
