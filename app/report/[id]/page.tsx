@@ -590,7 +590,7 @@ export default function ReportPage() {
         </section>
 
         {!compact && (
-          <section className="mt-10 grid gap-px border border-line bg-line md:grid-cols-2">
+          <section className="mt-8 grid gap-px border border-line bg-line sm:mt-10 md:grid-cols-2">
             <div className="bg-white p-6">
               <h2 className="flex items-center gap-2 text-[15px] font-medium text-jade">
                 <CheckCircle2 size={15} /> 写得好的地方
@@ -632,7 +632,7 @@ export default function ReportPage() {
           </section>
         )}
 
-        <section id="language-errors" className="mt-16 scroll-mt-24">
+        <section id="language-errors" className="mt-12 scroll-mt-24 sm:mt-16">
           <div className="border-b border-line pb-4">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
@@ -998,7 +998,7 @@ export default function ReportPage() {
         </section>
 
         {!compact && rewrites.length > 0 && (
-          <section className="mt-16">
+          <section className="mt-12 sm:mt-16">
             <div className="border-b border-line pb-4">
               <p className="eyebrow">
                 <span className="h-px w-6 bg-jade/60" /> 段落改写
@@ -1017,7 +1017,7 @@ export default function ReportPage() {
         )}
 
         {!compact && modelEssay && (
-          <section className="mt-16">
+          <section className="mt-12 sm:mt-16">
             <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
               <div>
                 <p className="eyebrow">
@@ -1062,7 +1062,7 @@ export default function ReportPage() {
           </section>
         )}
 
-        <section className="mt-16">
+        <section className="mt-12 sm:mt-16">
           <div className="border-b border-line pb-4">
             <p className="eyebrow">
               <span className="h-px w-6 bg-jade/60" /> 下一步练习
