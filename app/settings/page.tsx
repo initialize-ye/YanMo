@@ -198,6 +198,20 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-ink-mute lg:hidden">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                activeSource === "none" ? "bg-gold" : "bg-[#188038]"
+              )}
+            />
+            AI：{activeSource === "none" ? "未接入" : activeSource === "browser" ? "浏览器配置" : "服务器配置"}
+          </span>
+          <span>报告 {reportCount} 篇</span>
+          <span>存储：本机浏览器</span>
+        </div>
+
         <div className="mt-9 grid gap-12 lg:grid-cols-[1fr_270px] lg:gap-14">
           <div>
             <section id="ai" className="scroll-mt-24">
@@ -285,6 +299,7 @@ export default function SettingsPage() {
                       onClick={() => setShowKey((value) => !value)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-ink-mute hover:text-jade"
                       aria-label={showKey ? "隐藏 Key" : "显示 Key"}
+                      aria-pressed={showKey}
                     >
                       {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
@@ -335,6 +350,8 @@ export default function SettingsPage() {
 
               {testState !== "idle" && (
                 <div
+                  role="status"
+                  aria-live="polite"
                   className={cn(
                     "mt-3 flex items-start gap-2 border px-3 py-2.5 text-[13.5px] leading-6",
                     testState === "success"
@@ -377,7 +394,11 @@ export default function SettingsPage() {
                   仅保存
                 </button>
                 {saveNote && (
-                  <span className="inline-flex items-center gap-1 text-[13px] text-jade">
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className="inline-flex items-center gap-1 text-[13px] text-jade"
+                  >
                     <Check size={12} /> 已保存
                   </span>
                 )}
@@ -520,7 +541,7 @@ AI_MODEL=qwen-vl-max-latest`}
               <div className="mt-6 flex items-center justify-between border-t border-line pt-4 text-[13px] text-ink-mute">
                 <span>这些设置会用于批改建议和练习安排。</span>
                 {profileNote && (
-                  <span className="inline-flex items-center gap-1 text-jade">
+                  <span role="status" aria-live="polite" className="inline-flex items-center gap-1 text-jade">
                     <Check size={12} /> 已保存
                   </span>
                 )}
