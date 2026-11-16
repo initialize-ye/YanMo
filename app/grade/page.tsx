@@ -1394,7 +1394,7 @@ export default function GradePage() {
                         onClick={backToCompose}
                         className="ml-auto font-medium text-ink-mute hover:text-jade"
                       >
-                        重新上传
+                        返回修改
                       </button>
                     </div>
                     <p className="mt-1.5 text-[13px] text-ink-mute">

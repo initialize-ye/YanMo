@@ -261,6 +261,15 @@ export default function ReportPage() {
     });
   };
 
+  const hideAllAnnotations = () => {
+    setRevealed((current) => {
+      const next = new Set(current);
+      filteredAnnotations.forEach((item) => next.delete(item.id));
+      savePractice(drafts, next);
+      return next;
+    });
+  };
+
   const copySummary = async () => {
     const lines = [
       `研墨 AI 批改 · ${examLabel(meta.exam)} ${kindLabel(meta.kind)}`,
@@ -596,6 +605,15 @@ export default function ReportPage() {
                     className="btn btn-ghost !px-3 !py-1.5 text-[13px]"
                   >
                     全部显示
+                  </button>
+                )}
+                {practice && filteredAnnotations.some((item) => revealed.has(item.id)) && (
+                  <button
+                    type="button"
+                    onClick={hideAllAnnotations}
+                    className="btn btn-ghost !px-3 !py-1.5 text-[13px]"
+                  >
+                    全部收起
                   </button>
                 )}
                 {languageCount > 0 && !practice && (

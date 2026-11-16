@@ -163,6 +163,15 @@ export default function MistakesPage() {
     });
   };
 
+  const revealNone = () => {
+    setRevealed((current) => {
+      const next = new Set(current);
+      filtered.forEach((item) => next.delete(item.id));
+      persistPractice(drafts, next);
+      return next;
+    });
+  };
+
   return (
     <>
       <SiteHeader />
@@ -282,6 +291,15 @@ export default function MistakesPage() {
                     className="btn btn-ghost !min-h-10 !px-3 !py-0 text-[13px]"
                   >
                     全部显示
+                  </button>
+                )}
+                {practice && filtered.some((item) => revealed.has(item.id)) && (
+                  <button
+                    type="button"
+                    onClick={revealNone}
+                    className="btn btn-ghost !min-h-10 !px-3 !py-0 text-[13px]"
+                  >
+                    全部收起
                   </button>
                 )}
               </div>
