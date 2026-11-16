@@ -22,6 +22,8 @@ import type { ErrorCategory, GradeResult } from "@/lib/types";
 
 type FilterKey = "all" | ErrorCategory;
 
+const MISTAKES_PRACTICE_KEY = "yanmo.mistakes.practice";
+
 export default function MistakesPage() {
   const [reports, setReports] = useState<GradeResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,19 @@ export default function MistakesPage() {
     }
     const savedQuery = sessionStorage.getItem("yanmo.mistakes.query");
     if (savedQuery) setQuery(savedQuery);
+    try {
+      const rawPractice = sessionStorage.getItem(MISTAKES_PRACTICE_KEY);
+      if (rawPractice) {
+        const saved = JSON.parse(rawPractice) as {
+          drafts?: Record<string, string>;
+          revealed?: string[];
+        };
+        if (saved?.drafts && typeof saved.drafts === "object") setDrafts(saved.drafts);
+        if (Array.isArray(saved.revealed)) setRevealed(new Set(saved.revealed));
+      }
+    } catch {
+      // 忽略损坏的练习草稿
+    }
     const savedScroll = Number(sessionStorage.getItem("yanmo.mistakes.scroll") ?? 0);
     sessionStorage.removeItem("yanmo.mistakes.scroll");
     if (Number.isFinite(savedScroll) && savedScroll > 0) {
@@ -104,9 +119,29 @@ export default function MistakesPage() {
       .includes(normalizedQuery);
   });
 
+  const persistPractice = (nextDrafts: Record<string, string>, nextRevealed: Set<string>) => {
+    try {
+      sessionStorage.setItem(
+        MISTAKES_PRACTICE_KEY,
+        JSON.stringify({ drafts: nextDrafts, revealed: Array.from(nextRevealed) })
+      );
+    } catch {
+      // 忽略存储失败，练习仍可在当前页面进行
+    }
+  };
+
   const togglePractice = () => {
-    setPractice((value) => !value);
-    setRevealed(new Set());
+    const next = !practice;
+    setPractice(next);
+    const clearedRevealed = new Set<string>();
+    setRevealed(clearedRevealed);
+    persistPractice(drafts, clearedRevealed);
+  };
+
+  const updateDraft = (id: string, value: string) => {
+    const next = { ...drafts, [id]: value };
+    setDrafts(next);
+    persistPractice(next, revealed);
   };
 
   const toggleReveal = (id: string) => {
@@ -114,6 +149,7 @@ export default function MistakesPage() {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      persistPractice(drafts, next);
       return next;
     });
   };
@@ -122,6 +158,7 @@ export default function MistakesPage() {
     setRevealed((current) => {
       const next = new Set(current);
       filtered.forEach((item) => next.add(item.id));
+      persistPractice(drafts, next);
       return next;
     });
   };
@@ -254,7 +291,7 @@ export default function MistakesPage() {
               <div className="mt-4 flex items-start gap-2 border border-jade/25 bg-[#e8f0fe] px-3.5 py-3 text-[14px] leading-6 text-ink-soft">
                 <EyeOff size={15} className="mt-0.5 shrink-0 text-jade" />
                 <p>
-                  参考答案已隐藏。先在每题里写下你的修改，再点「对照参考修改」。草稿只保存在当前页面，不会写进报告。
+                  参考答案已隐藏。先在每题里写下你的修改，再点「对照参考修改」。草稿会保留在本标签页，不会写进报告。
                 </p>
               </div>
             )}
@@ -285,9 +322,7 @@ export default function MistakesPage() {
                     practice={practice}
                     revealed={revealed.has(item.id)}
                     draft={drafts[item.id] ?? ""}
-                    onDraftChange={(value) =>
-                      setDrafts((current) => ({ ...current, [item.id]: value }))
-                    }
+                    onDraftChange={(value) => updateDraft(item.id, value)}
                     onToggleReveal={() => toggleReveal(item.id)}
                   />
                 ))}
