@@ -8,10 +8,10 @@ on:
 permissions:
   contents: write
 
-# 同一分支连续 push 时取消上一次未完成的构建，避免排队堆积
+# 每次 push 都各自构建：不取消进行中的构建，多个 push 会依次排队执行，产物各自保留
 concurrency:
   group: windows-exe-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

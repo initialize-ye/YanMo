@@ -127,7 +127,7 @@ GitHub Actions 提供 **Build Windows Exe** 工作流：
 - **每次 `git push`（任意分支/标签）都会自动构建**桌面版 exe，产物在该次运行页面的 Artifacts 中下载（`yanmo-windows-exe`，保留 30 天）；
 - 推送 `v*` 标签时，exe 还会自动附加到对应的 GitHub Release；
 - 也可在 Actions 页面手动 `Run workflow` 触发；
-- 同一分支连续推送时，旧构建会被自动取消，避免排队。
+- 同一分支连续推送时**不会取消**进行中的构建，多个 push 会依次排队、各自产出 exe。
 
 ## 接入 AI
 
