@@ -70,18 +70,21 @@ export default function SettingsPage() {
     setReportCount(loadReports().length);
     void fetchAiStatus().then(setStatus);
     // 估算本机已用存储，便于用户了解数据占用（不支持时静默跳过）。
-    if (typeof navigator !== "undefined" && navigator.storage?.estimate) {
-      navigator.storage
-        .estimate()
-        .then((estimate) => {
-          if (typeof estimate.usage === "number") {
-            setStorageMb(estimate.usage / (1024 * 1024));
-          }
-        })
-        .catch(() => {});
-    }
+    refreshStorageEstimate();
     document.title = "设置 · 研墨 AI";
   }, []);
+
+  function refreshStorageEstimate() {
+    if (typeof navigator === "undefined" || !navigator.storage?.estimate) return;
+    navigator.storage
+      .estimate()
+      .then((estimate) => {
+        if (typeof estimate.usage === "number") {
+          setStorageMb(estimate.usage / (1024 * 1024));
+        }
+      })
+      .catch(() => {});
+  }
 
   // 清除确认态下按 Esc 取消，避免误触破坏性操作。
   useEffect(() => {
@@ -209,6 +212,8 @@ export default function SettingsPage() {
     clearReports();
     setReportCount(0);
     setClearConfirm(false);
+    // 清除后重新估算占用，让"存储"一行及时刷新。
+    window.setTimeout(refreshStorageEstimate, 60);
   };
 
   return (
