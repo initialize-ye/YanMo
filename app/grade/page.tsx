@@ -1315,6 +1315,13 @@ export default function GradePage() {
                     </div>
                   </div>
 
+                  {ocrState === "done" && ocr && ocr.confidence < 0.85 && (
+                    <p className="mt-2 flex items-start gap-1.5 text-[13px] leading-6 text-gold">
+                      <Info size={13} className="mt-0.5 shrink-0" />
+                      识别可信度较低，请重点核对数字、专有名词、拼写与标点再开始批改。
+                    </p>
+                  )}
+
                   <SelfCheck text={text} kind={kind} />
 
                   {ocr?.warnings && ocr.warnings.length > 0 && (

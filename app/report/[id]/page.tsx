@@ -832,12 +832,18 @@ export default function ReportPage() {
               ) : (
                 <div className="border border-line bg-paper-light/60 p-6 text-center">
                   <p className="text-[15px] font-medium text-ink">
-                    {filter === "language" ? "没有发现明显的语法/拼写/用词错误" : "这个筛选下没有错误"}
+                    {sortedAnnotations.length === 0
+                      ? "本篇没有需要标注的错误"
+                      : filter === "language"
+                        ? "没有发现明显的语法/拼写/用词错误"
+                        : "这个筛选下没有错误"}
                   </p>
                   <p className="mt-2 text-[14px] leading-6 text-ink-mute">
-                    {filter === "language"
-                      ? "语言基本准确，可以切换到「全部」查看结构、语域或逻辑层面的建议。"
-                      : "换一个筛选条件看看，或先参考上方的总评与训练建议。"}
+                    {sortedAnnotations.length === 0
+                      ? "整体表达比较通顺，可以直接参考上方的总评与训练建议。"
+                      : filter === "language"
+                        ? "语言基本准确，可以切换到「全部」查看结构、语域或逻辑层面的建议。"
+                        : "换一个筛选条件看看，或先参考上方的总评与训练建议。"}
                   </p>
                   {filter !== "all" && sortedAnnotations.length > 0 && (
                     <button
