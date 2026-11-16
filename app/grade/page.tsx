@@ -1047,8 +1047,8 @@ export default function GradePage() {
                     )}
                     {topicWarnings.length > 0 && (
                       <ul className="mt-1.5 space-y-0.5 pl-3 text-[13px] leading-5 text-ink-mute">
-                        {topicWarnings.map((warning) => (
-                          <li key={warning} className="list-disc">
+                        {topicWarnings.map((warning, index) => (
+                          <li key={`topic-warning-${index}`} className="list-disc">
                             {warning}
                           </li>
                         ))}
@@ -1319,8 +1319,8 @@ export default function GradePage() {
                         <Info size={13} /> 识别提示
                       </p>
                       <ul className="mt-1.5 space-y-1 pl-4 text-[13.5px] leading-6 text-ink-soft">
-                        {ocr.warnings.map((warning) => (
-                          <li key={warning} className="list-disc">
+                        {ocr.warnings.map((warning, index) => (
+                          <li key={`ocr-warning-${index}`} className="list-disc">
                             {warning}
                           </li>
                         ))}

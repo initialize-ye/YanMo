@@ -531,7 +531,7 @@ export default function ReportPage() {
               {overview.strengths.length ? (
                 <ul className="mt-4 space-y-3">
                   {overview.strengths.map((item, index) => (
-                    <li key={item} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
+                    <li key={`strength-${index}`} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
                       <span className="num mt-0.5 text-[13px] italic text-jade/80">
                         0{index + 1}
                       </span>
@@ -550,7 +550,7 @@ export default function ReportPage() {
               {overview.weaknesses.length ? (
                 <ul className="mt-4 space-y-3">
                   {overview.weaknesses.map((item, index) => (
-                    <li key={item} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
+                    <li key={`weakness-${index}`} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
                       <span className="num mt-0.5 text-[13px] italic text-cinnabar/70">
                         0{index + 1}
                       </span>
@@ -624,7 +624,7 @@ export default function ReportPage() {
                     disabled={!filteredAnnotations.length || activeIndex === 0}
                     aria-label="上一处批注"
                     title="上一处"
-                    className="grid h-6 w-6 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                    className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronUp size={14} />
                   </button>
@@ -636,7 +636,7 @@ export default function ReportPage() {
                     }
                     aria-label="下一处批注"
                     title="下一处"
-                    className="grid h-6 w-6 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                    className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronDown size={14} />
                   </button>
@@ -902,7 +902,7 @@ export default function ReportPage() {
                   <p className="text-[13px] font-medium tracking-[0.18em] text-ink-mute">范文亮点</p>
                   <ul className="mt-3 space-y-3">
                     {modelEssay.notes.map((note, index) => (
-                      <li key={note} className="flex gap-2.5 text-[14px] leading-6 text-ink-soft">
+                      <li key={`note-${index}`} className="flex gap-2.5 text-[14px] leading-6 text-ink-soft">
                         <span className="num mt-0.5 text-[13px] italic text-gold">0{index + 1}</span>
                         {note}
                       </li>
@@ -946,7 +946,7 @@ export default function ReportPage() {
           <div className="mt-7">
             {suggestions.map((suggestion, index) => (
               <article
-                key={suggestion.title}
+                key={`suggestion-${index}`}
                 className={cn(
                   "grid gap-3 border-t border-line sm:grid-cols-[60px_1fr] sm:gap-5",
                   compact ? "py-3" : "py-6"
@@ -983,10 +983,7 @@ export default function ReportPage() {
                     </p>
                   )}
                   <p
-                    className={cn(
-                      "text-[14.5px] leading-6 text-ink-soft",
-                      compact ? "mt-1" : "mt-1"
-                    )}
+                    className="mt-1 text-[14.5px] leading-6 text-ink-soft"
                   >
                     {!compact && <span className="font-medium text-ink-mute">怎么做：</span>}
                     {suggestion.action}
@@ -1020,7 +1017,7 @@ export default function ReportPage() {
               </div>
               <div className="mt-5 grid gap-px overflow-hidden rounded-xl bg-line sm:grid-cols-3">
                 {nextSteps.map((step, index) => (
-                  <div key={step.title} className="bg-paper-light p-4">
+                  <div key={`step-${index}`} className="bg-paper-light p-4">
                     <p className="num text-[13px] text-jade">
                       0{index + 1} · {step.minutes} MIN
                     </p>
