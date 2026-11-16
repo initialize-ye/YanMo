@@ -102,6 +102,7 @@ function renderParagraph(
       <span key={`${match.annotation.id}-${match.start}`} className="inline">
         <button
           type="button"
+          id={`anchor-${match.annotation.id}`}
           onClick={() => onSelect(match.annotation.id)}
           className={cn(
             "redline cursor-pointer rounded-[2px] bg-cinnabar/[0.045] text-left transition-colors hover:bg-cinnabar/[0.1]",

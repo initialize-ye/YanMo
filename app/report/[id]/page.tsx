@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
   Check,
   CheckCircle2,
@@ -201,6 +202,13 @@ export default function ReportPage() {
   const selectNote = (noteId: string) => {
     setActiveNote(noteId);
     const element = document.getElementById(`note-${noteId}`);
+    if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // 从右侧批注卡片反向定位到左侧原文标记（移动端尤其有用：先看建议再回原文）。
+  const locateInEssay = (noteId: string) => {
+    setActiveNote(noteId);
+    const element = document.getElementById(`anchor-${noteId}`);
     if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -711,7 +719,7 @@ export default function ReportPage() {
             )}
           </div>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.28fr_0.72fr] print:block">
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1.18fr_0.82fr] print:block">
             <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start print:static print:max-h-none print:overflow-visible">
               <div className="paper-card p-5 sm:p-8">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3.5">
@@ -767,8 +775,13 @@ export default function ReportPage() {
                     key={annotation.id}
                     id={`note-${annotation.id}`}
                     className={cn(
-                      "scroll-mt-24 rounded-xl border border-line bg-white p-5 transition-colors",
-                      activeNote === annotation.id && "border-jade/40 bg-white"
+                      "scroll-mt-24 rounded-xl border border-l-[3px] border-line bg-white p-5 transition-colors",
+                      annotation.severity === "high"
+                        ? "border-l-cinnabar"
+                        : annotation.severity === "medium"
+                          ? "border-l-gold"
+                          : "border-l-line",
+                      activeNote === annotation.id && "border-jade/50 ring-2 ring-jade/15 shadow-paper"
                     )}
                   >
                     <div className="flex flex-wrap items-center gap-2">
@@ -797,6 +810,14 @@ export default function ReportPage() {
                         />
                         {SEVERITY_LABELS[annotation.severity]}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => locateInEssay(annotation.id)}
+                        title="回到原文中的这处标记"
+                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade"
+                      >
+                        <ArrowUp size={12} /> 原文定位
+                      </button>
                     </div>
 
                     <p className="mt-3 font-serif text-[15.5px] leading-6 text-ink-mute line-through decoration-cinnabar/35 decoration-1">
