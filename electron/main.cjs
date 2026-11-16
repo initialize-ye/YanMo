@@ -381,7 +381,9 @@ function showShortcuts() {
     "Ctrl + P    打印 / 导出 PDF",
     "",
     "Ctrl + R    重新加载",
-    "Ctrl + 加号 / 减号    调整页面缩放（会记住）"
+    "Ctrl + 加号 / 减号    调整页面缩放（会记住）",
+    "Ctrl + 0    还原缩放（实际大小）",
+    "F11    全屏 / 退出全屏"
   ].join("\n");
   void dialog.showMessageBox(mainWindow ?? undefined, {
     type: "info",
