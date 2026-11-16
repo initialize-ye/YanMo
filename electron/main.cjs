@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, screen, shell, nativeTheme } = require("electron");
+const { app, BrowserWindow, Menu, dialog, screen, shell, nativeTheme, clipboard } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const net = require("node:net");
@@ -647,8 +647,26 @@ async function createWindow(url) {
         { type: "separator" },
         { role: "selectAll", label: "全选", enabled: params.editFlags.canSelectAll }
       );
-    } else if (params.selectionText.trim()) {
-      template.push({ role: "copy", label: "复制", enabled: params.editFlags.canCopy });
+    } else {
+      if (params.selectionText.trim()) {
+        template.push({ role: "copy", label: "复制", enabled: params.editFlags.canCopy });
+      }
+      if (params.linkURL) {
+        if (template.length) template.push({ type: "separator" });
+        template.push({
+          label: "复制链接地址",
+          click: () => clipboard.writeText(params.linkURL)
+        });
+        if (
+          /^https?:/i.test(params.linkURL) &&
+          !params.linkURL.startsWith(`http://127.0.0.1:${PORT}`)
+        ) {
+          template.push({
+            label: "在默认浏览器打开",
+            click: () => void shell.openExternal(params.linkURL)
+          });
+        }
+      }
     }
     if (!template.length) return;
     Menu.buildFromTemplate(template).popup({ window: mainWindow ?? undefined });
