@@ -17,7 +17,7 @@ export default function HomePage() {
         <section className="relative pb-16 pt-10 sm:pt-16 lg:pb-24 lg:pt-20">
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-32 -top-20 h-[440px] w-[440px] rounded-full bg-[#e8f0fe] opacity-80 blur-3xl"
+            className="pointer-events-none absolute -right-24 -top-16 h-[300px] w-[300px] rounded-full bg-[#e8f0fe] opacity-80 blur-3xl sm:-right-32 sm:-top-20 sm:h-[440px] sm:w-[440px]"
           />
 
           <div className="wrap relative grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
