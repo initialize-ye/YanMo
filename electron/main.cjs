@@ -142,22 +142,30 @@ function readWindowState() {
   return bounds;
 }
 
+let windowStateTimer = null;
+
 function writeWindowState(window) {
   if (!window || window.isDestroyed()) return;
   try {
     const zoom = window.webContents.getZoomLevel();
-    fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
-    if (window.isMaximized()) {
-      const previous = readWindowState();
-      fs.writeFileSync(
-        STATE_FILE,
-        JSON.stringify({ ...previous, maximized: true, zoom }, null, 2)
-      );
-      return;
-    }
+    const maximized = window.isMaximized();
+    // getNormalBounds 在最大化时也返回"还原后"的尺寸，始终记录几何信息更稳。
     const { x, y, width, height } = window.getNormalBounds();
-    fs.writeFileSync(STATE_FILE, JSON.stringify({ x, y, width, height, maximized: false, zoom }, null, 2));
+    fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+    fs.writeFileSync(
+      STATE_FILE,
+      JSON.stringify({ x, y, width, height, maximized, zoom }, null, 2)
+    );
   } catch {}
+}
+
+// 拖动/缩放/最大化时防抖保存，避免只在关闭时才落盘（意外崩溃也能记住）。
+function scheduleWriteWindowState(window) {
+  if (windowStateTimer) clearTimeout(windowStateTimer);
+  windowStateTimer = setTimeout(() => {
+    windowStateTimer = null;
+    writeWindowState(window);
+  }, 500);
 }
 
 /* ---------------- 启动画面 ---------------- */
@@ -708,6 +716,10 @@ async function createWindow(url) {
         if (result.response === 0) void mainWindow?.reload();
       });
   });
+
+  for (const eventName of ["resize", "move", "maximize", "unmaximize"]) {
+    mainWindow.on(eventName, () => scheduleWriteWindowState(mainWindow));
+  }
 
   mainWindow.on("close", () => writeWindowState(mainWindow));
   mainWindow.on("closed", () => {
