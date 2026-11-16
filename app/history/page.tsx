@@ -46,6 +46,7 @@ export default function HistoryPage() {
   const [importNote, setImportNote] = useState<string | null>(null);
   const [withProfile, setWithProfile] = useState(true);
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"time" | "score">("time");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
 
@@ -65,6 +66,8 @@ export default function HistoryPage() {
     restoredRef.current = true;
     const savedQuery = sessionStorage.getItem("yanmo.history.query");
     if (savedQuery) setQuery(savedQuery);
+    const savedSort = sessionStorage.getItem("yanmo.history.sort");
+    if (savedSort === "score" || savedSort === "time") setSortBy(savedSort);
     const savedScroll = Number(sessionStorage.getItem("yanmo.history.scroll") ?? 0);
     sessionStorage.removeItem("yanmo.history.scroll");
     if (Number.isFinite(savedScroll) && savedScroll > 0) {
@@ -75,6 +78,11 @@ export default function HistoryPage() {
   const updateQuery = (value: string) => {
     setQuery(value);
     sessionStorage.setItem("yanmo.history.query", value);
+  };
+
+  const updateSort = (value: "time" | "score") => {
+    setSortBy(value);
+    sessionStorage.setItem("yanmo.history.sort", value);
   };
 
   const rememberScroll = () => {
@@ -185,6 +193,15 @@ export default function HistoryPage() {
           .includes(normalizedQuery)
       )
     : reports;
+
+  const displayReports =
+    sortBy === "score"
+      ? [...filteredReports].sort(
+          (a, b) =>
+            scorePercent(b) - scorePercent(a) ||
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+      : filteredReports;
 
   return (
     <>
@@ -367,7 +384,31 @@ export default function HistoryPage() {
                       </button>
                     )}
                   </div>
-                  <span className="text-[13px] text-ink-mute">按时间倒序</span>
+                  <div
+                    role="group"
+                    aria-label="排序方式"
+                    className="inline-flex items-center rounded-full border border-line bg-paper-light/60 p-0.5"
+                  >
+                    {([
+                      { value: "time", label: "按时间" },
+                      { value: "score", label: "按得分" }
+                    ] as const).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateSort(option.value)}
+                        aria-pressed={sortBy === option.value}
+                        className={cn(
+                          "rounded-full px-2.5 py-1 text-[12.5px] font-medium transition-colors",
+                          sortBy === option.value
+                            ? "bg-white text-ink shadow-sm"
+                            : "text-ink-mute hover:text-ink"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -385,7 +426,7 @@ export default function HistoryPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-line/70">
-                  {filteredReports.map((report) => (
+                  {displayReports.map((report) => (
                     <Link
                       key={report.id}
                       href={`/report/${report.id}`}
