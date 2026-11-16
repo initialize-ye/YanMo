@@ -905,7 +905,7 @@ export default function GradePage() {
                 </div>
               </div>
 
-              <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
+              <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto overscroll-contain lg:pr-1 lg:self-start">
                 <div className="rounded-2xl border border-line bg-paper-light/50 p-5 sm:p-6">
                   <div className="flex items-center justify-between border-b border-line pb-3">
                     <h2 className="text-[14px] font-medium text-ink-mute">批改设置</h2>
@@ -1252,7 +1252,7 @@ export default function GradePage() {
               </div>
 
               <div className="mt-7 grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
-                <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
+                <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto overscroll-contain lg:pr-1 lg:self-start">
                   <div className="border border-line bg-white p-2">
                     {prepared && (
                       // eslint-disable-next-line @next/next/no-img-element

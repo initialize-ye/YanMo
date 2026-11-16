@@ -655,7 +655,7 @@ AI_MODEL=qwen-vl-max-latest`}
             </section>
           </div>
 
-          <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start">
+          <aside className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto overscroll-contain lg:pr-1 lg:self-start">
             <div className="border border-line bg-paper-light/60 p-5">
               <p className="text-[13px] font-medium tracking-[0.18em] text-ink-mute">当前状态</p>
               <div className="mt-4 space-y-3">

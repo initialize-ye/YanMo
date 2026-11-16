@@ -794,7 +794,7 @@ export default function ReportPage() {
           </div>
 
           <div className="mt-6 grid gap-10 lg:grid-cols-[1.42fr_0.78fr] print:block">
-            <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start print:static print:max-h-none print:overflow-visible">
+            <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto overscroll-contain lg:pr-1 lg:self-start print:static print:max-h-none print:overflow-visible">
               <div className="paper-card overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-paper-light/70 px-5 py-4 sm:px-8">
                   <div className="flex items-center gap-3">
