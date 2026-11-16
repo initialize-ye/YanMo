@@ -15,10 +15,12 @@ try {
 
   $Port = 3000
   $NoBrowser = $false
+  $ForceClean = $false
 
   foreach ($arg in $args) {
     if ($arg -match "^-?(p|port)=?(\d+)$") { $Port = [int]$Matches[2] }
     elseif ($arg -in @("-NoBrowser", "--no-browser")) { $NoBrowser = $true }
+    elseif ($arg -in @("-Clean", "--clean")) { $ForceClean = $true }
   }
 
   function Write-Title {
@@ -40,6 +42,18 @@ try {
   }
   $nodeVersion = (& node --version) 2>$null
   Write-Title "  Node.js $nodeVersion  ·  $($node.Source)" "DarkGray"
+
+  # 校验版本（要求 >= 18.17），避免低版本上出现难以定位的构建错误。
+  $verMatch = [regex]::Match("$nodeVersion", 'v?(\d+)\.(\d+)')
+  if ($verMatch.Success) {
+    $major = [int]$verMatch.Groups[1].Value
+    $minor = [int]$verMatch.Groups[2].Value
+    if ($major -lt 18 -or ($major -eq 18 -and $minor -lt 17)) {
+      Write-Title "Node.js 版本过低（$nodeVersion）。本项目需要 18.17 或更高版本。" "Red"
+      Write-Title "请安装 Node.js 20 LTS 后重试：https://nodejs.org/" "Yellow"
+      exit 1
+    }
+  }
 
   # 优先使用 cmd 版 npm：npm.ps1 在部分系统上会被执行策略拦截，导致脚本静默失败。
   $npmCmd = $null
@@ -77,7 +91,24 @@ try {
     if (-not $NoBrowser) { Start-Process $url }
     Write-Title ""
     Write-Title "如果打开后不是最新版本，请先关闭之前的窗口，或换个端口启动：启动项目.ps1 -Port 3001" "DarkGray"
+    Write-Title "如页面仍显示旧内容或报 hydration 错误，请在浏览器按 Ctrl+Shift+R 硬刷新（或清除该站点数据）。" "DarkGray"
     exit 0
+  }
+
+  # —— 启动前清理：避免开发模式加载到上一次生产构建的旧资源（脏缓存会导致
+  #    「服务端新 / 客户端旧」的 hydration 不一致，以及页面显示旧版本）。——
+  $nextDir = Join-Path $root ".next"
+  $buildIdFile = Join-Path $nextDir "BUILD_ID"
+  $needClean = $ForceClean
+  if (-not $needClean -and (Test-Path -LiteralPath $buildIdFile)) {
+    $needClean = $true
+    Write-Title "检测到上次「生产构建」残留的 .next（含 BUILD_ID）。" "Yellow"
+  }
+  if ($needClean -and (Test-Path -LiteralPath $nextDir)) {
+    Write-Title "正在清理 .next 缓存，确保以最新代码启动……" "Cyan"
+    Remove-Item -LiteralPath $nextDir -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Title "已清理 .next。" "DarkGray"
+    Write-Title ""
   }
 
   if (-not $NoBrowser) {
@@ -101,6 +132,7 @@ try {
   Write-Title ""
   Write-Title "  服务启动后浏览器会自动打开（首次编译约需 10—30 秒）。" "DarkGray"
   Write-Title "  按 Ctrl+C 停止服务；关闭本窗口也会停止服务。" "DarkGray"
+  Write-Title "  若页面显示旧内容或报 hydration 错误，请按 Ctrl+Shift+R 硬刷新（或清除该站点数据）。" "DarkGray"
   Write-Title ""
 
   & $npmCmd run dev -- -p $Port
@@ -109,7 +141,7 @@ try {
   Write-Title ""
   if ($exitCode -ne 0) {
     Write-Title "服务已退出，退出码：$exitCode" "Red"
-    Write-Title "常见原因：端口被占用、依赖损坏（删除 node_modules 后重试）、或 Node.js 版本过低。" "Yellow"
+    Write-Title "常见原因：端口被占用、依赖损坏（删除 node_modules 后重试）、缓存异常（重试时加 -Clean 参数）、或 Node.js 版本过低。" "Yellow"
   } else {
     Write-Title "服务已停止。" "DarkGray"
   }

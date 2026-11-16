@@ -69,8 +69,9 @@
 - 会打开一个 PowerShell 窗口，显示启动过程和错误提示。
 - 首次运行会自动 `npm install`；服务就绪后自动打开浏览器。
 - 出现任何错误时窗口不会立刻关闭，会停留等待回车，方便查看原因。
+- 启动前会自动检查 `.next`：若检测到上一次「生产构建」的残留（含 `BUILD_ID`），会先清理，避免开发模式加载到旧资源、导致页面显示旧版本或 hydration 报错。
 
-命令行方式（可选参数：`-Port` 指定端口，`-NoBrowser` 不自动打开浏览器）：
+命令行方式（可选参数：`-Port` 指定端口，`-NoBrowser` 不自动打开浏览器，`-Clean` 强制清理缓存）：
 
 ```powershell
 PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
@@ -267,6 +268,8 @@ lib/
 
 ```bash
 npm run dev                 # 开发服务器
+npm run dev:clean           # 先清理 .next 再启动开发服务器
+npm run clean               # 清理 .next 与 tsconfig.tsbuildinfo
 npm run build               # 生产构建（Next.js standalone）
 npm run start               # 启动生产构建
 npm run typecheck           # TypeScript 检查
@@ -281,6 +284,14 @@ npm run build:exe:dir       # 只生成未打包的 Electron 目录，便于调�
 **双击启动脚本后窗口闪退、项目没起来**
 现在双击 `启动项目.cmd` 或 `启动项目.ps1` 都会保留窗口：出错时窗口会停住并显示原因，按回车才关闭。
 常见原因是脚本编码或执行策略问题，当前版本已修复：脚本保存为带 BOM 的 UTF-8，内部改用 `npm.cmd` 调用，并在外层捕获异常。
+
+**页面显示旧内容 / 开发时报 hydration 不一致**
+多为缓存导致。双击启动脚本在检测到生产构建残留时会自动清理 `.next`；也可手动清理后重启：
+```powershell
+npm run clean
+npm run dev
+```
+或在浏览器按 `Ctrl+Shift+R` 硬刷新、清除该站点数据后重试。桌面版更新后如遇旧界面，清理一次站点数据即可。
 
 **双击 .ps1 时提示「禁止运行脚本」**
 Windows 默认按「安全相关文件」打开 `.ps1`。请双击 `启动项目.cmd`，或在 PowerShell 中执行：
