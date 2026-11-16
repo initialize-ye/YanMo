@@ -490,7 +490,11 @@ p {
 }
 
 @media print {
+  /* 强制打印背景色与文字色，浏览器「导出 PDF」时得分块、批注色不丢失。 */
+  html,
   body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     background: #ffffff;
   }
 
@@ -519,6 +523,7 @@ p {
   }
 
   @page {
+    size: A4;
     margin: 16mm;
   }
 }
