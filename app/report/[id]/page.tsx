@@ -592,7 +592,7 @@ export default function ReportPage() {
                   {overview.strengths.map((item, index) => (
                     <li key={`strength-${index}`} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
                       <span className="num mt-0.5 text-[13px] italic text-jade/80">
-                        0{index + 1}
+                        {String(index + 1).padStart(2, "0")}
                       </span>
                       {item}
                     </li>
@@ -611,7 +611,7 @@ export default function ReportPage() {
                   {overview.weaknesses.map((item, index) => (
                     <li key={`weakness-${index}`} className="flex gap-3 text-[15px] leading-6 text-ink-soft">
                       <span className="num mt-0.5 text-[13px] italic text-cinnabar/70">
-                        0{index + 1}
+                        {String(index + 1).padStart(2, "0")}
                       </span>
                       {item}
                     </li>
@@ -1027,7 +1027,7 @@ export default function ReportPage() {
                   <ul className="mt-3 space-y-3">
                     {modelEssay.notes.map((note, index) => (
                       <li key={`note-${index}`} className="flex gap-2.5 text-[14px] leading-6 text-ink-soft">
-                        <span className="num mt-0.5 text-[13px] italic text-gold">0{index + 1}</span>
+                        <span className="num mt-0.5 text-[13px] italic text-gold">{String(index + 1).padStart(2, "0")}</span>
                         {note}
                       </li>
                     ))}
@@ -1082,7 +1082,7 @@ export default function ReportPage() {
                     compact ? "text-[17px]" : "text-[28px]"
                   )}
                 >
-                  0{index + 1}
+                  {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2.5">
@@ -1143,7 +1143,7 @@ export default function ReportPage() {
                 {nextSteps.map((step, index) => (
                   <div key={`step-${index}`} className="bg-paper-light p-4">
                     <p className="num text-[13px] text-jade">
-                      0{index + 1} · {step.minutes} MIN
+                      {String(index + 1).padStart(2, "0")} · {step.minutes} MIN
                     </p>
                     <p className="mt-2 text-[15px] font-medium text-ink">{step.title}</p>
                     <p className="mt-1 text-[13.5px] leading-6 text-ink-mute">{step.detail}</p>
