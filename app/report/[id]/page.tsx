@@ -913,6 +913,7 @@ export default function ReportPage() {
                       <button
                         type="button"
                         onClick={() => toggleReveal(annotation.id)}
+                        aria-pressed={revealed.has(annotation.id)}
                         className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-jade hover:underline print-hide"
                       >
                         {revealed.has(annotation.id) ? <EyeOff size={13} /> : <Eye size={13} />}

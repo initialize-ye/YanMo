@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Check,
+  ClipboardCopy,
   Eye,
   EyeOff,
   Search,
@@ -377,6 +378,20 @@ function MistakeCard({
   onToggleReveal: () => void;
 }) {
   const showReference = !practice || revealed;
+  const [copied, setCopied] = useState(false);
+
+  const copyItem = async () => {
+    const lines = [
+      `[${CATEGORY_LABELS[item.category]}] ${item.quote}`,
+      `→ ${item.suggestion}`,
+      item.explanation
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  };
 
   return (
     <article className="paper-card flex flex-col p-5">
@@ -424,6 +439,7 @@ function MistakeCard({
         <button
           type="button"
           onClick={onToggleReveal}
+          aria-pressed={revealed}
           className="mt-2 inline-flex items-center gap-1.5 self-start text-[13px] font-medium text-jade hover:underline"
         >
           {revealed ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -456,15 +472,34 @@ function MistakeCard({
           <BookOpen size={12} className="shrink-0" />
           <span className="truncate">{item.reportTitle}</span>
         </span>
-        <Link
-          href={`/report/${item.reportId}`}
-          onClick={() =>
-            sessionStorage.setItem("yanmo.mistakes.scroll", String(window.scrollY))
-          }
-          className="inline-flex shrink-0 items-center gap-1 font-medium text-jade hover:underline"
-        >
-          查看原报告 <ArrowUpRight size={12} />
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void copyItem()}
+            title="复制这处错题"
+            aria-label="复制这处错题"
+            className="inline-flex items-center gap-1 font-medium text-ink-mute transition-colors hover:text-jade"
+          >
+            {copied ? (
+              <>
+                <Check size={12} className="text-jade" /> 已复制
+              </>
+            ) : (
+              <>
+                <ClipboardCopy size={12} /> 复制
+              </>
+            )}
+          </button>
+          <Link
+            href={`/report/${item.reportId}`}
+            onClick={() =>
+              sessionStorage.setItem("yanmo.mistakes.scroll", String(window.scrollY))
+            }
+            className="inline-flex items-center gap-1 font-medium text-jade hover:underline"
+          >
+            查看原报告 <ArrowUpRight size={12} />
+          </Link>
+        </div>
       </div>
     </article>
   );
