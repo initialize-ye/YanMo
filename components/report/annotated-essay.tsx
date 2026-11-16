@@ -109,6 +109,10 @@ function renderParagraph(
             activeId === match.annotation.id && "bg-cinnabar/[0.14]"
           )}
           title={`${match.annotation.suggestion}｜${match.annotation.explanation}`}
+          aria-label={`第 ${match.number} 处错误：${paragraph.slice(
+            match.start,
+            match.end
+          )}，点击查看修改建议`}
         >
           {paragraph.slice(match.start, match.end)}
           <sup className="ml-0.5 font-sans text-[12px] font-medium not-italic text-cinnabar">
