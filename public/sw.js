@@ -1,4 +1,4 @@
-const CACHE = "yanmo-static-v1";
+const CACHE = "yanmo-static-v2";
 const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
