@@ -408,11 +408,12 @@ function showAbout() {
     title: "关于研墨 AI",
     message: "研墨 AI · 考研英语作文批改",
     detail,
-    buttons: ["打开数据目录", "关闭"],
-    defaultId: 1,
-    cancelId: 1
+    buttons: ["打开数据目录", "打开日志目录", "关闭"],
+    defaultId: 2,
+    cancelId: 2
   }).then((result) => {
     if (result.response === 0) openUserData();
+    else if (result.response === 1) openLogs();
   });
 }
 
@@ -806,3 +807,9 @@ app.on("before-quit", () => {
   closeLog();
 });
 process.on("exit", stopServer);
+
+// 记录未处理的 Promise 拒绝，避免异常被静默吞掉，便于排查桌面端问题。
+process.on("unhandledRejection", (reason) => {
+  const text = reason instanceof Error ? reason.stack || reason.message : String(reason);
+  appendLog(`\n[unhandledRejection] ${text}\n`);
+});
