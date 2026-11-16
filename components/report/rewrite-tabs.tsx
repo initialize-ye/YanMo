@@ -56,7 +56,7 @@ export function RewriteTabs({ rewrites }: { rewrites: ParagraphRewrite[] }) {
               role="tab"
               id={`rewrite-tab-${index}`}
               aria-selected={isActive}
-              aria-controls={`rewrite-panel-${index}`}
+              aria-controls="rewrite-panel"
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(index)}
               className={cn(
@@ -74,7 +74,7 @@ export function RewriteTabs({ rewrites }: { rewrites: ParagraphRewrite[] }) {
 
       <div
         role="tabpanel"
-        id={`rewrite-panel-${safeActive}`}
+        id="rewrite-panel"
         aria-labelledby={`rewrite-tab-${safeActive}`}
         tabIndex={0}
         className="mt-4 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-2"
