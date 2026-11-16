@@ -19,6 +19,7 @@ import {
   EyeOff,
   Maximize2,
   Minimize2,
+  PenLine,
   Printer,
   RefreshCw,
   Trash2
@@ -719,17 +720,20 @@ export default function ReportPage() {
             )}
           </div>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.18fr_0.82fr] print:block">
+          <div className="mt-6 grid gap-10 lg:grid-cols-[1.42fr_0.78fr] print:block">
             <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto lg:pr-1 lg:self-start print:static print:max-h-none print:overflow-visible">
-              <div className="paper-card p-5 sm:p-8">
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium tracking-[0.2em] text-ink-mute">
-                      学生原文
+              <div className="paper-card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-paper-light/70 px-5 py-4 sm:px-8">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-jade text-white">
+                      <PenLine size={16} />
                     </span>
-                    <span className="chip !py-0.5 !text-[12px]">
-                      {filteredAnnotations.length} 处标记
-                    </span>
+                    <div>
+                      <p className="text-[14px] font-semibold tracking-[0.16em] text-ink">学生原文</p>
+                      <p className="mt-0.5 text-[11.5px] tracking-[0.08em] text-ink-mute">
+                        ESSAY · {filteredAnnotations.length} 处标记
+                      </p>
+                    </div>
                   </div>
                   {practice ? (
                     <span className="text-[13px] text-ink-mute">练习模式中不显示修改</span>
@@ -750,14 +754,16 @@ export default function ReportPage() {
                     </button>
                   )}
                 </div>
-                <AnnotatedEssay
-                  text={report.text}
-                  annotations={filteredAnnotations}
-                  activeId={activeNote}
-                  onSelect={selectNote}
-                  showCorrections={showCorrections}
-                  className="space-y-6 sm:!text-[18px] sm:!leading-[2.05]"
-                />
+                <div className="px-5 py-6 sm:px-9 sm:py-9">
+                  <AnnotatedEssay
+                    text={report.text}
+                    annotations={filteredAnnotations}
+                    activeId={activeNote}
+                    onSelect={selectNote}
+                    showCorrections={showCorrections}
+                    className="space-y-6 sm:!text-[19px] sm:!leading-[2.12]"
+                  />
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[13px] text-ink-mute">
                 <span>
