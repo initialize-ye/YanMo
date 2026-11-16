@@ -1598,7 +1598,10 @@ function GradingPanel({
 
           {error ? (
             <div className="mt-7 w-full">
-              <div className="border border-cinnabar/35 bg-cinnabar/[0.05] px-4 py-4 text-left">
+              <div
+                role="alert"
+                className="border border-cinnabar/35 bg-cinnabar/[0.05] px-4 py-4 text-left"
+              >
                 <p className="flex items-center gap-2 text-[15px] font-medium text-cinnabar">
                   <AlertTriangle size={15} /> {error.message}
                 </p>
