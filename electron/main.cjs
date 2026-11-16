@@ -742,7 +742,8 @@ async function bootstrap() {
 
 function handleFatal(error) {
   console.error(error);
-  const detail = serverLogs ? `${error.message}\n\n${serverLogs}` : error.message;
+  const raw = String(error?.message ?? error);
+  const detail = serverLogs ? `${raw}\n\n${serverLogs}` : raw;
   appendLog(`\n[fatal] ${detail}\n`);
   closeSplash();
   if (CAPTURE_PATH) {
@@ -750,11 +751,29 @@ function handleFatal(error) {
     app.quit();
     return;
   }
-  dialog.showErrorBox(
-    "研墨 AI 启动失败",
-    `${detail}\n\n日志文件：\n${LOG_FILE}`
-  );
-  app.quit();
+  // 按常见启动失败类型给出可操作提示，而不是一律"启动失败"。
+  const isPortBusy = /端口\s*\d+\s*已被/.test(raw) || raw.includes("已被其他程序占用");
+  const isMissing = raw.includes("找不到服务端文件");
+  const title = isPortBusy ? "端口被占用" : isMissing ? "缺少服务端文件" : "研墨 AI 启动失败";
+  const hint = isPortBusy
+    ? "请关闭占用端口的程序（通常是另一个研墨窗口或残留进程），或在任务管理器结束 YanMo.exe 后重试。"
+    : isMissing
+      ? "安装包可能不完整，请重新下载；源码运行请先执行 npm run build 与 npm run prepare:standalone。"
+      : "请查看下方日志排查；如反复失败，可打开日志目录反馈。";
+  void dialog
+    .showMessageBox({
+      type: "error",
+      title,
+      message: title,
+      detail: `${hint}\n\n${detail}\n\n日志文件：\n${LOG_FILE}`,
+      buttons: ["打开日志目录", "退出"],
+      defaultId: 1,
+      cancelId: 1
+    })
+    .then((result) => {
+      if (result.response === 0) openLogs();
+      app.quit();
+    });
 }
 
 app.on("window-all-closed", () => {
