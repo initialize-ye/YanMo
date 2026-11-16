@@ -607,6 +607,11 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
       : "";
 
   const last = coords[coords.length - 1];
+  const averagePercent = points.length
+    ? Math.round(points.reduce((sum, point) => sum + point.percent, 0) / points.length)
+    : 0;
+  const averageY =
+    padTop + (1 - Math.min(100, Math.max(0, averagePercent)) / 100) * innerHeight;
 
   return (
     <div className="mt-4">
@@ -615,7 +620,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
           viewBox={`0 0 ${width} ${height}`}
           className="w-full min-w-[560px]"
           role="img"
-          aria-label="历史作文得分率趋势"
+          aria-label={`历史作文得分率趋势，平均 ${averagePercent}%`}
         >
         <defs>
           <linearGradient id="historyTrend" x1="0" y1="0" x2="0" y2="1">
@@ -660,6 +665,31 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        )}
+
+        {coords.length > 1 && (
+          <g>
+            <line
+              x1={padX}
+              y1={averageY}
+              x2={width - padX}
+              y2={averageY}
+              stroke="#b06000"
+              strokeOpacity="0.55"
+              strokeWidth="1.3"
+              strokeDasharray="5 5"
+            />
+            <text
+              x={width - padX}
+              y={averageY - 6}
+              textAnchor="end"
+              fontSize="12"
+              fill="#b06000"
+              fontFamily="Segoe UI, Roboto, sans-serif"
+            >
+              平均 {averagePercent}%
+            </text>
+          </g>
         )}
 
         {coords.map((point, index) => (
