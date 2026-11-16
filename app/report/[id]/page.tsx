@@ -444,6 +444,9 @@ export default function ReportPage() {
               )}
               {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败" : "复制摘要"}
             </button>
+            <span role="status" aria-live="polite" className="sr-only">
+              {copyState === "copied" ? "报告摘要已复制到剪贴板" : copyState === "failed" ? "复制摘要失败，请手动选择复制" : ""}
+            </span>
             <button
               type="button"
               onClick={() => window.print()}

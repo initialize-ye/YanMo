@@ -1507,7 +1507,7 @@ function StepIndicator({ current }: { current: number }) {
         const done = index < current;
         const active = index === current;
         return (
-          <li key={label} className="flex items-center gap-1.5">
+          <li key={label} className="flex items-center gap-1.5" aria-current={active ? "step" : undefined}>
             <span
               aria-hidden
               className={cn(
@@ -1518,7 +1518,6 @@ function StepIndicator({ current }: { current: number }) {
                     ? "border-jade bg-jade text-white"
                     : "border-line bg-white text-ink-mute"
               )}
-              aria-current={active ? "step" : undefined}
             >
               {done ? <Check size={12} /> : `0${index + 1}`}
             </span>
