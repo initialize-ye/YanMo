@@ -826,9 +826,14 @@ export default function ReportPage() {
                       </button>
                     </div>
 
-                    <p className="mt-3 font-serif text-[15.5px] leading-6 text-ink-mute line-through decoration-cinnabar/35 decoration-1">
-                      {annotation.quote}
-                    </p>
+                    <div className="mt-3">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-mute/80">
+                        原句
+                      </p>
+                      <p className="mt-1 font-serif text-[15.5px] leading-6 text-ink-mute line-through decoration-cinnabar/35 decoration-1">
+                        {annotation.quote}
+                      </p>
+                    </div>
 
                     {practice && (
                       <textarea
@@ -853,13 +858,15 @@ export default function ReportPage() {
 
                     {(!practice || revealed.has(annotation.id)) && (
                       <div className="mt-3">
-                        <div className="flex items-start gap-2">
-                          <ArrowRight size={14} className="mt-1.5 shrink-0 text-jade" />
-                          <p className="font-serif text-[15.5px] leading-6 text-jade">
-                            {annotation.suggestion}
-                          </p>
+                        <div className="rounded-lg border border-jade/20 bg-jade/[0.04] px-3 py-2.5">
+                          <div className="flex items-start gap-2">
+                            <ArrowRight size={14} className="mt-1.5 shrink-0 text-jade" />
+                            <p className="font-serif text-[15.5px] leading-6 text-jade">
+                              {annotation.suggestion}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-2.5 border-t border-line/70 pt-2.5 text-[14px] leading-6 text-ink-soft">
+                        <p className="mt-2.5 text-[14px] leading-6 text-ink-soft">
                           {annotation.explanation}
                         </p>
                         {practice && drafts[annotation.id]?.trim() && (
