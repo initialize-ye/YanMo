@@ -596,7 +596,7 @@ export default function ReportPage() {
                   错误位置与修改建议
                 </h2>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 print-hide">
                 <button
                   type="button"
                   onClick={togglePractice}
@@ -676,7 +676,7 @@ export default function ReportPage() {
               默认只看语法、拼写和用词。红色波浪线标出错误位置，点击句子可跳到对应批注。
               打开练习模式后，修改建议会先隐藏，先自己改，再对照参考答案。
             </p>
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            <div className="mt-4 flex flex-wrap items-center gap-1.5 print-hide">
               {filters.map((item) => {
                 const active = filter === item.key;
                 return (
@@ -710,7 +710,7 @@ export default function ReportPage() {
               })}
             </div>
             {practice && (
-              <div className="mt-3 flex items-start gap-2 border border-jade/25 bg-[#e8f0fe] px-3.5 py-2.5 text-[13.5px] leading-6 text-ink-soft">
+              <div className="mt-3 flex items-start gap-2 border border-jade/25 bg-[#e8f0fe] px-3.5 py-2.5 text-[13.5px] leading-6 text-ink-soft print-hide">
                 <EyeOff size={14} className="mt-0.5 shrink-0 text-jade" />
                 <p>
                   修改建议已隐藏。先在每处写下自己的改法，再点「对照参考修改」。草稿会留在本机，关闭应用后清空。
@@ -742,7 +742,7 @@ export default function ReportPage() {
                       onClick={() => setShowCorrections((value) => !value)}
                       aria-pressed={showCorrections}
                       className={cn(
-                        "inline-flex items-center gap-1 border px-2 py-1 text-[13px] font-medium transition-colors",
+                        "inline-flex items-center gap-1 border px-2 py-1 text-[13px] font-medium transition-colors print-hide",
                         showCorrections
                           ? "border-jade/40 bg-jade/[0.06] text-jade"
                           : "border-line text-ink-mute hover:border-jade/40 hover:text-jade"
@@ -764,7 +764,7 @@ export default function ReportPage() {
                   />
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[13px] text-ink-mute">
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[13px] text-ink-mute print-hide">
                 <span>
                   <span className="redline">红色波浪线</span> 需要修改
                 </span>
@@ -827,7 +827,7 @@ export default function ReportPage() {
                         type="button"
                         onClick={() => locateInEssay(annotation.id)}
                         title="回到原文中的这处标记"
-                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade"
+                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
                       >
                         <ArrowUp size={12} /> 原文定位
                       </button>
@@ -847,7 +847,7 @@ export default function ReportPage() {
                         value={drafts[annotation.id] ?? ""}
                         onChange={(event) => updateDraft(annotation.id, event.target.value)}
                         placeholder="先自己改一遍，再对照参考答案…"
-                        className="field mt-3 min-h-[84px] resize-y !py-2 text-[14px] leading-6"
+                        className="field mt-3 min-h-[84px] resize-y !py-2 text-[14px] leading-6 print-hide"
                         aria-label="我的修改"
                       />
                     )}
@@ -856,7 +856,7 @@ export default function ReportPage() {
                       <button
                         type="button"
                         onClick={() => toggleReveal(annotation.id)}
-                        className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-jade hover:underline"
+                        className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-jade hover:underline print-hide"
                       >
                         {revealed.has(annotation.id) ? <EyeOff size={13} /> : <Eye size={13} />}
                         {revealed.has(annotation.id) ? "收起参考修改" : "对照参考修改"}
