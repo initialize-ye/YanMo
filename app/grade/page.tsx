@@ -598,7 +598,7 @@ export default function GradePage() {
           {stage === "compose" && (
             <div className="mt-8 grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
               <div>
-                <div className="flex items-center gap-1 border-b border-line">
+                <div className="flex items-center gap-1 border-b border-line" role="group" aria-label="选择输入方式">
                   <ModeTab
                     active={mode === "image"}
                     onClick={() => {
@@ -1493,6 +1493,7 @@ function StepIndicator({ current }: { current: number }) {
         return (
           <li key={label} className="flex items-center gap-1.5">
             <span
+              aria-hidden
               className={cn(
                 "grid h-7 w-7 place-items-center rounded-full border text-[13px] font-medium",
                 done
@@ -1506,12 +1507,16 @@ function StepIndicator({ current }: { current: number }) {
               {done ? <Check size={12} /> : `0${index + 1}`}
             </span>
             <span
+              aria-hidden
               className={cn(
                 "hidden text-[13px] sm:block",
                 active ? "font-medium text-jade" : "text-ink-mute"
               )}
             >
               {label}
+            </span>
+            <span className="sr-only">
+              {done ? "已完成" : active ? "进行中" : "待完成"}：{label}
             </span>
             {index < FLOW_STEPS.length - 1 && (
               <span className={cn("mx-1 h-px w-3 sm:w-5", done ? "bg-jade/50" : "bg-line")} />
