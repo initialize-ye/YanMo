@@ -1027,6 +1027,8 @@ export default function GradePage() {
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
                           <span
+                            role="status"
+                            aria-live="polite"
                             className={cn(
                               "text-[13px]",
                               topicError
