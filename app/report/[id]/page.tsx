@@ -60,6 +60,7 @@ export default function ReportPage() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [errorCopyState, setErrorCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [noteCopyId, setNoteCopyId] = useState<string | null>(null);
+  const [collapseNotes, setCollapseNotes] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [showModel, setShowModel] = useState(true);
@@ -648,6 +649,15 @@ export default function ReportPage() {
                   {practice ? <EyeOff size={12} /> : <Eye size={12} />}
                   {practice ? "退出练习" : "练习模式"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCollapseNotes((value) => !value)}
+                  aria-pressed={collapseNotes}
+                  className="btn btn-ghost !px-3 !py-1.5 text-[13px]"
+                >
+                  {collapseNotes ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                  {collapseNotes ? "展开批注" : "收起批注"}
+                </button>
                 {practice && filteredAnnotations.some((item) => !revealed.has(item.id)) && (
                   <button
                     type="button"
@@ -890,6 +900,8 @@ export default function ReportPage() {
                       </button>
                     </div>
 
+                    {!collapseNotes && (
+                      <>
                     <div className="mt-3">
                       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-mute/80">
                         原句
@@ -943,6 +955,8 @@ export default function ReportPage() {
                           </div>
                         )}
                       </div>
+                    )}
+                      </>
                     )}
                   </article>
                 ))
