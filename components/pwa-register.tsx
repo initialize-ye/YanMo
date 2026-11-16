@@ -26,7 +26,8 @@ export function PWARegister() {
     }
 
     const register = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      // updateViaCache: "none" 让浏览器每次都绕过 HTTP 缓存检查 sw.js 是否有更新，避免旧 Service Worker 长期滞留。
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {
         // 注册失败不影响网页正常使用
       });
     };
