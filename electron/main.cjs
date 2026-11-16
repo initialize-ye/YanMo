@@ -20,6 +20,7 @@ let splashWindow = null;
 let serverProcess = null;
 let serverLogs = "";
 let logStream = null;
+let updateCheckInFlight = false;
 
 app.setName("YanMo");
 app.setPath("userData", path.join(app.getPath("appData"), "YanMo"));
@@ -297,12 +298,21 @@ async function startServer() {
 }
 
 function stopServer() {
-  if (serverProcess && !serverProcess.killed) {
+  const child = serverProcess;
+  serverProcess = null;
+  if (!child || child.killed) return;
+  try {
+    // Windows 下用 taskkill 结束整个进程树，避免服务子进程残留占用端口。
+    if (process.platform === "win32" && child.pid) {
+      spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    } else {
+      child.kill();
+    }
+  } catch {
     try {
-      serverProcess.kill();
+      child.kill();
     } catch {}
   }
-  serverProcess = null;
 }
 
 /* ---------------- 菜单与帮助 ---------------- */
@@ -382,7 +392,17 @@ function compareVersions(a, b) {
   return 0;
 }
 
-async function checkForUpdates() {
+async function checkForUpdates(silent = false) {
+  if (updateCheckInFlight) return;
+  updateCheckInFlight = true;
+  try {
+    await runUpdateCheck(silent);
+  } finally {
+    updateCheckInFlight = false;
+  }
+}
+
+async function runUpdateCheck(silent = false) {
   const current = app.getVersion();
   let latest = "";
   try {
@@ -411,6 +431,9 @@ async function checkForUpdates() {
     if (result.response === 0) void shell.openExternal(RELEASES_URL);
     return;
   }
+
+  // 静默检查（启动时）没有新版本或获取失败时，不打扰用户。
+  if (silent) return;
 
   if (latest) {
     await dialog.showMessageBox(mainWindow ?? undefined, {
@@ -607,6 +630,49 @@ async function createWindow(url) {
       });
   });
 
+  // 渲染进程崩溃时给出可操作提示，而不是留下空白窗口。
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    appendLog(`\n[render-process-gone] reason=${details?.reason ?? "unknown"}\n`);
+    if (CAPTURE_PATH) {
+      app.quit();
+      return;
+    }
+    closeSplash();
+    void dialog
+      .showMessageBox(mainWindow ?? undefined, {
+        type: "error",
+        title: "界面已中断",
+        message: "研墨界面出现异常并已停止",
+        detail: `原因：${details?.reason ?? "未知"}。重新加载通常可以恢复，数据保存在本机不会丢失。`,
+        buttons: ["重新加载", "退出"],
+        defaultId: 0,
+        cancelId: 1
+      })
+      .then((result) => {
+        if (result.response === 0) void mainWindow?.reload();
+        else app.quit();
+      });
+  });
+
+  // 卡顿/无响应时提示，可重新加载恢复。
+  mainWindow.on("unresponsive", () => {
+    appendLog("\n[unresponsive] 主界面无响应\n");
+    if (CAPTURE_PATH) return;
+    void dialog
+      .showMessageBox(mainWindow ?? undefined, {
+        type: "warning",
+        title: "界面无响应",
+        message: "研墨界面暂时没有响应",
+        detail: "可以稍等片刻让它恢复，或重新加载页面。",
+        buttons: ["重新加载", "继续等待"],
+        defaultId: 0,
+        cancelId: 1
+      })
+      .then((result) => {
+        if (result.response === 0) void mainWindow?.reload();
+      });
+  });
+
   mainWindow.on("close", () => writeWindowState(mainWindow));
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -634,6 +700,10 @@ async function bootstrap() {
   createSplash();
   const url = await startServer();
   await createWindow(url);
+  // 打包版启动后静默检查一次更新，仅在发现新版本时提示。
+  if (app.isPackaged && !CAPTURE_PATH) {
+    setTimeout(() => void checkForUpdates(true), 8000);
+  }
 }
 
 function handleFatal(error) {
