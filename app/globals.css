@@ -181,6 +181,13 @@ p {
     transform: translateY(0);
   }
 
+  /* 超宽桌面（≥1536px）适度加宽主容器，大屏留白更均衡。 */
+  @media (min-width: 1536px) {
+    .wrap {
+      max-width: 1280px;
+    }
+  }
+
   .display {
     font-family: var(--font-display);
     font-weight: 500;
