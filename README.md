@@ -271,7 +271,7 @@ npm run dev                 # 开发服务器
 npm run dev:clean           # 先清理 .next 再启动开发服务器
 npm run clean               # 清理 .next 与 tsconfig.tsbuildinfo
 npm run build               # 生产构建（Next.js standalone）
-npm run start               # 启动生产构建
+npm run start               # 生产模式启动（standalone，自动准备静态资源后运行）
 npm run typecheck           # TypeScript 检查
 npm run prepare:standalone  # 把静态资源复制进 .next/standalone
 npm run electron:dev        # 以 Electron 窗口运行已构建的应用

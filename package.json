@@ -10,7 +10,7 @@
     "dev:clean": "npm run clean && next dev",
     "clean": "node scripts/clean.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "npm run prepare:standalone && node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "prepare:standalone": "node scripts/prepare-standalone.mjs",
     "electron:dev": "electron .",
