@@ -706,7 +706,7 @@ export default function GradePage() {
                             <button
                               type="button"
                               onClick={() => cameraInputRef.current?.click()}
-                              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]"
+                              className="btn btn-ghost !px-4 !py-2.5 text-[14.5px] md:hidden"
                             >
                               <Camera size={15} /> 用手机拍摄
                             </button>
