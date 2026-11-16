@@ -122,7 +122,12 @@ dist-electron/YanMo-<version>-win64.exe
 
 桌面版固定使用本机端口 `38217`，只监听 `127.0.0.1`；数据保存在 `%APPDATA%\YanMo`。
 
-GitHub Actions 中提供了 **Build Windows Exe** 工作流，可手动运行并下载桌面版 exe；推送 `v*` 标签时也会自动附加到 Release。
+GitHub Actions 提供 **Build Windows Exe** 工作流：
+
+- **每次 `git push`（任意分支/标签）都会自动构建**桌面版 exe，产物在该次运行页面的 Artifacts 中下载（`yanmo-windows-exe`，保留 30 天）；
+- 推送 `v*` 标签时，exe 还会自动附加到对应的 GitHub Release；
+- 也可在 Actions 页面手动 `Run workflow` 触发；
+- 同一分支连续推送时，旧构建会被自动取消，避免排队。
 
 ## 接入 AI
 
