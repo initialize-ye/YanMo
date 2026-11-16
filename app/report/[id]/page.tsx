@@ -59,6 +59,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [errorCopyState, setErrorCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [noteCopyId, setNoteCopyId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [showModel, setShowModel] = useState(true);
@@ -347,6 +348,21 @@ export default function ReportPage() {
       setErrorCopyState("failed");
       window.setTimeout(() => setErrorCopyState("idle"), 2200);
     }
+  };
+
+  const copyNote = async (item: (typeof filteredAnnotations)[number]) => {
+    const lines = [
+      `[${CATEGORY_LABELS[item.category]}] ${item.quote}`,
+      `→ ${item.suggestion}`,
+      item.explanation
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setNoteCopyId(item.id);
+      window.setTimeout(() => {
+        setNoteCopyId((current) => (current === item.id ? null : current));
+      }, 1800);
+    } catch {}
   };
 
   const handleDelete = () => {
@@ -849,9 +865,26 @@ export default function ReportPage() {
                       </span>
                       <button
                         type="button"
+                        onClick={() => void copyNote(annotation)}
+                        title="复制这处批注"
+                        aria-label="复制这处批注"
+                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
+                      >
+                        {noteCopyId === annotation.id ? (
+                          <>
+                            <Check size={12} className="text-jade" /> 已复制
+                          </>
+                        ) : (
+                          <>
+                            <ClipboardCopy size={12} /> 复制
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => locateInEssay(annotation.id)}
                         title="回到原文中的这处标记"
-                        className="ml-auto inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
+                        className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-mute transition-colors hover:text-jade print-hide"
                       >
                         <ArrowUp size={12} /> 原文定位
                       </button>
