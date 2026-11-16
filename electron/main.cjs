@@ -563,6 +563,7 @@ function buildMenu() {
         { type: "separator" },
         { label: "检查更新", click: () => void checkForUpdates() },
         { label: "打开下载页", click: () => void shell.openExternal(RELEASES_URL) },
+        { label: "打开日志目录", click: openLogs },
         { type: "separator" },
         { label: "关于研墨 AI", click: showAbout }
       ]

@@ -722,7 +722,8 @@ export default function ReportPage() {
                     onClick={() => stepNote(-1)}
                     disabled={!filteredAnnotations.length || activeIndex === 0}
                     aria-label="上一处批注"
-                    title="上一处"
+                    aria-keyshortcuts="BracketLeft"
+                    title="上一处（快捷键 [ ）"
                     className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronUp size={14} />
@@ -734,7 +735,8 @@ export default function ReportPage() {
                       !filteredAnnotations.length || activeIndex === filteredAnnotations.length - 1
                     }
                     aria-label="下一处批注"
-                    title="下一处"
+                    aria-keyshortcuts="BracketRight"
+                    title="下一处（快捷键 ] ）"
                     className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronDown size={14} />
