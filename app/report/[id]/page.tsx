@@ -726,7 +726,7 @@ export default function ReportPage() {
                     aria-label="上一处批注"
                     aria-keyshortcuts="BracketLeft"
                     title="上一处（快捷键 [ ）"
-                    className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                    className="grid h-8 w-8 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronUp size={14} />
                   </button>
@@ -739,7 +739,7 @@ export default function ReportPage() {
                     aria-label="下一处批注"
                     aria-keyshortcuts="BracketRight"
                     title="下一处（快捷键 ] ）"
-                    className="grid h-7 w-7 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
+                    className="grid h-8 w-8 place-items-center rounded-full text-ink-mute transition-colors hover:bg-paper-deep hover:text-jade disabled:opacity-30"
                   >
                     <ChevronDown size={14} />
                   </button>
