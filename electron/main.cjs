@@ -48,6 +48,16 @@ function prepareLog() {
   if (logStream) return;
   try {
     fs.mkdirSync(LOG_DIR, { recursive: true });
+    // 日志过大时轮转一次，避免 server.log 无限增长。
+    try {
+      if (fs.statSync(LOG_FILE).size > 2 * 1024 * 1024) {
+        const backup = `${LOG_FILE}.1`;
+        try {
+          fs.rmSync(backup, { force: true });
+        } catch {}
+        fs.renameSync(LOG_FILE, backup);
+      }
+    } catch {}
     logStream = fs.createWriteStream(LOG_FILE, { flags: "a" });
     logStream.write(`\n--- ${new Date().toISOString()} ---\n`);
   } catch {}
@@ -277,6 +287,9 @@ async function startServer() {
   serverProcess.stdout?.on("data", appendLog);
   serverProcess.stderr?.on("data", appendLog);
   serverProcess.once("error", (error) => appendLog(`\n[server error] ${error.message}`));
+  serverProcess.once("exit", (code, signal) => {
+    appendLog(`\n[server exit] code=${code ?? "null"} signal=${signal ?? "null"}\n`);
+  });
 
   const url = `http://127.0.0.1:${PORT}`;
   await waitForServer(url);
