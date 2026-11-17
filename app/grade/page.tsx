@@ -37,16 +37,13 @@ import {
 import { prepareImage, type PreparedImage } from "@/lib/image";
 import { SAMPLE_ESSAY } from "@/lib/sample";
 import { buildHistoryInsight, cn, countWords, wordRangeFor } from "@/lib/utils";
+import { clearDraft, loadAiConfig, loadDraft, saveDraft } from "@/lib/storage";
 import {
-  clearDraft,
-  loadAiConfig,
-  loadDraft,
-  loadProfile,
-  loadReports,
-  saveDraft,
-  saveProfile,
-  saveReport
-} from "@/lib/storage";
+  fetchProfile,
+  fetchReports,
+  saveProfileToServer,
+  saveReportToServer
+} from "@/lib/user-data";
 import { apiGrade, apiOcr, apiTopic, fetchAiStatus } from "@/lib/client-api";
 import type {
   AiConfig,
@@ -137,7 +134,6 @@ export default function GradePage() {
   useEffect(() => {
     setMounted(true);
     document.title = "批改台 · 研墨 AI";
-    const storedProfile = loadProfile();
     const draft = loadDraft();
     if (draft) {
       setExam(draft.exam);
@@ -158,10 +154,15 @@ export default function GradePage() {
         Boolean(draft.text.trim() || draft.customTitle.trim() || draft.customPrompt.trim())
       );
     } else {
-      setExam(storedProfile.exam);
-      setLevel(storedProfile.level);
-      setTarget(nearestTarget(storedProfile.exam, "essay", storedProfile.targetScore));
-      setTopicId(TOPICS[storedProfile.exam].essay[0].id);
+      fetchProfile()
+        .then((profile) => {
+          if (!profile) return;
+          setExam(profile.exam);
+          setLevel(profile.level);
+          setTarget(nearestTarget(profile.exam, "essay", profile.targetScore));
+          setTopicId(TOPICS[profile.exam].essay[0].id);
+        })
+        .catch(() => undefined);
     }
     setAiConfig(loadAiConfig());
     void fetchAiStatus().then(setStatus);
@@ -414,23 +415,30 @@ export default function GradePage() {
     setStage("grading");
     setGradingStartedAt(Date.now());
 
-    const currentProfile = loadProfile();
-    saveProfile({ ...currentProfile, exam, level, targetScore: safeTarget });
+    const [currentProfile, historyReports] = await Promise.all([
+      fetchProfile().catch(() => null),
+      fetchReports().catch(() => [])
+    ]);
+    if (currentProfile) {
+      void saveProfileToServer({ ...currentProfile, exam, level, targetScore: safeTarget }).catch(
+        () => undefined
+      );
+    }
 
     const request: GradeRequestBody = {
       text: content.trim(),
       meta,
-      history: buildHistoryInsight(loadReports())
+      history: buildHistoryInsight(historyReports)
     };
 
     try {
       const result = await apiGrade(request, aiConfig);
-      const saved = saveReport(result);
-      if (!saved) {
+      try {
+        await saveReportToServer(result);
+      } catch {
         setGradingError({
-          message:
-            "批改已完成，但本机存储空间不足，报告未能保存。请到设置页清理旧报告后重新批改（草稿已保留）。",
-          code: "STORAGE_FULL"
+          message: "批改已完成，但报告保存到账号失败，请稍后重试（草稿已保留）。",
+          code: "SAVE_FAILED"
         });
         return;
       }
@@ -854,7 +862,7 @@ export default function GradePage() {
                 )}
 
                 <p className="mt-6 border-t border-line/70 pt-3 text-[13px] leading-6 text-ink-mute">
-                  提交后作文内容会发送到你配置的 AI 服务用于批改；研墨服务器不留存作文，报告仅保存在本机。
+                  提交后作文内容会发送到你配置的 AI 服务用于批改；作文正文不落库，报告保存在你的账号下。
                 </p>
 
                 {/* 提交区跟随表单正常排布：不再视口悬浮，避免滚动时遮挡正文。 */}
@@ -1627,7 +1635,7 @@ function GradingPanel({
                         : error.code === "AI_QUOTA"
                           ? "AI 账户余额或额度不足，请到服务商后台充值后重试。"
                           : error.code === "STORAGE_FULL"
-                            ? "到设置页「数据与隐私」清理旧报告后重试；本机最多保留 100 篇，草稿已保留。"
+                            ? "到设置页「数据与隐私」清理旧报告后重试；每个账号最多保留 100 篇，草稿已保留。"
                             : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
                 </p>
               </div>
@@ -1723,3 +1731,5 @@ function GradingPanel({
     </div>
   );
 }
+
+

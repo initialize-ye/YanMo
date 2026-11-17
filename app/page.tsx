@@ -51,7 +51,7 @@ export default function HomePage() {
               </div>
 
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[14px] text-ink-mute">
-                {["手写 / 拍照识别", "无需注册", "报告只存本机"].map((item) => (
+                {["手写 / 拍照识别", "账号同步", "随时回看记录"].map((item) => (
                   <span key={item} className="inline-flex items-center gap-1.5">
                     <Check size={14} className="text-jade" strokeWidth={2.5} />
                     {item}
@@ -141,7 +141,7 @@ export default function HomePage() {
             <div>
               <h2 className="text-[20px] font-medium text-ink">准备好就上传下一篇</h2>
               <p className="mt-1.5 text-[14.5px] leading-6 text-ink-mute">
-                支持照片和文字稿，报告保存在本机，随时回看。
+                支持照片和文字稿，报告随账号保存，换设备也能回看。
               </p>
               <RecentReportLink />
             </div>
@@ -160,3 +160,5 @@ export default function HomePage() {
     </>
   );
 }
+
+

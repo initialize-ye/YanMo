@@ -32,7 +32,7 @@ export function SiteFooter() {
               接入自己的 AI
             </Link>
             <span className="text-ink-mute">图片仅用于本次识别</span>
-            <span className="text-ink-mute">报告默认保存在本机</span>
+            <span className="text-ink-mute">报告随账号云端保存</span>
           </div>
         </div>
       </div>
@@ -45,3 +45,4 @@ export function SiteFooter() {
     </footer>
   );
 }
+

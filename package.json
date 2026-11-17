@@ -1,11 +1,9 @@
 {
   "name": "yanmo-ai",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "private": true,
-  "description": "考研英语手写作文批改工具",
+  "description": "考研英语手写作文批改工具（Web 端，含账号系统）",
   "author": "YanMo",
-  "main": "electron/main.cjs",
-  "updateManifestUrl": "https://yanmoai.online/updates/latest.json",
   "scripts": {
     "dev": "next dev",
     "dev:clean": "npm run clean && next dev",
@@ -13,10 +11,7 @@
     "build": "next build",
     "start": "npm run prepare:standalone && node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "prepare:standalone": "node scripts/prepare-standalone.mjs",
-    "electron:dev": "electron .",
-    "build:exe": "npm run build && npm run prepare:standalone && electron-builder --win portable --config electron-builder.yml",
-    "build:exe:dir": "npm run build && npm run prepare:standalone && electron-builder --win --dir --config electron-builder.yml"
+    "prepare:standalone": "node scripts/prepare-standalone.mjs"
   },
   "engines": {
     "node": ">=18.17.0"
@@ -36,8 +31,6 @@
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
-    "electron": "^45.2.3",
-    "electron-builder": "^26.18.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"

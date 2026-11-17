@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowUpRight, LogOut, Menu, UserRound, X } from "lucide-react";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
+import { fetchMe, logout, type PublicUser } from "@/lib/user-data";
 
 const LINKS = [
   { href: "/grade", label: "批改台" },
@@ -16,7 +17,43 @@ const LINKS = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<PublicUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetchMe().then((value) => {
+      if (alive) setUser(value);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/login");
+    router.refresh();
+  };
 
   useEffect(() => {
     setOpen(false);
@@ -70,6 +107,38 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="flex items-center gap-1">
+          {user && (
+            <div ref={menuRef} className="relative hidden md:block">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((value) => !value)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex items-center gap-2 rounded-full px-2.5 py-2 text-[13.5px] font-medium text-ink-mute transition-colors hover:bg-paper-deep hover:text-ink"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#e8f0fe] text-jade">
+                  <UserRound size={15} />
+                </span>
+                <span className="hidden max-w-[10rem] truncate lg:inline">{user.email}</span>
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-line bg-white p-1.5 shadow-lift"
+                >
+                  <p className="truncate px-3 py-2 text-[12.5px] text-ink-mute">{user.email}</p>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[14px] text-ink-soft transition-colors hover:bg-paper-deep hover:text-ink"
+                  >
+                    <LogOut size={15} /> 退出登录
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             aria-label={open ? "关闭菜单" : "打开菜单"}
@@ -124,6 +193,16 @@ export function SiteHeader() {
                   </Link>
                 );
               })}
+              {user && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-1 flex items-center justify-between rounded-xl border-t border-line px-3.5 py-3 text-[15px] font-medium text-ink-mute"
+                >
+                  退出登录（{user.email}）
+                  <LogOut size={16} />
+                </button>
+              )}
             </div>
           </nav>
         </>

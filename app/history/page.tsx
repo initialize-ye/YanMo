@@ -18,16 +18,14 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { SyncPanel } from "@/components/sync-panel";
-import { CATEGORY_LABELS, examLabel, kindLabel } from "@/lib/constants";
+import { CATEGORY_LABELS, examLabel, kindLabel, MAX_REPORTS } from "@/lib/constants";
+import { parseImportFile, type ParsedImport } from "@/lib/storage";
 import {
-  MAX_REPORTS,
-  applyImport,
-  exportAllData,
-  loadReports,
-  parseImportFile,
-  type ImportPreview
-} from "@/lib/storage";
+  fetchReports,
+  fetchProfile,
+  importReports,
+  saveProfileToServer
+} from "@/lib/user-data";
 import { averagePercent, cn, formatDate, formatScore, scorePercent } from "@/lib/utils";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
 
@@ -42,7 +40,7 @@ interface TrendPoint {
 export default function HistoryPage() {
   const [reports, setReports] = useState<GradeResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [preview, setPreview] = useState<ParsedImport | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importNote, setImportNote] = useState<string | null>(null);
   const [withProfile, setWithProfile] = useState(true);
@@ -52,14 +50,24 @@ export default function HistoryPage() {
   const restoredRef = useRef(false);
 
   useEffect(() => {
+    let alive = true;
     const refresh = () => {
-      setReports(loadReports());
-      setLoading(false);
+      fetchReports()
+        .then((list) => {
+          if (alive) setReports(list);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (alive) setLoading(false);
+        });
     };
     refresh();
     document.title = "写作档案 · 研墨 AI";
     window.addEventListener("yanmo:reports-changed", refresh);
-    return () => window.removeEventListener("yanmo:reports-changed", refresh);
+    return () => {
+      alive = false;
+      window.removeEventListener("yanmo:reports-changed", refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -90,8 +98,14 @@ export default function HistoryPage() {
     sessionStorage.setItem("yanmo.history.scroll", String(window.scrollY));
   };
 
-  const exportArchive = () => {
-    const blob = new Blob([exportAllData()], { type: "application/json;charset=utf-8" });
+  const exportArchive = async () => {
+    const profile = (await fetchProfile()) ?? undefined;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile,
+      reports
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -113,29 +127,30 @@ export default function HistoryPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFile = useCallback(async (file: File) => {
-    try {
-      const raw = await file.text();
-      const result = parseImportFile(raw);
-      if (!result.totalInFile) {
-        setImportError("文件里没有报告记录。");
-        return;
+  const handleFile = useCallback(
+    async (file: File) => {
+      try {
+        const raw = await file.text();
+        const result = parseImportFile(raw);
+        if (!result.totalInFile) {
+          setImportError("文件里没有报告记录。");
+          return;
+        }
+        const existingIds = new Set(reports.map((report) => report.id));
+        const fresh = result.reports.filter((report) => !existingIds.has(report.id));
+        if (!fresh.length && !result.profile) {
+          setImportError("文件中的报告都已存在，没有需要导入的内容。");
+          return;
+        }
+        setPreview(result);
+        setWithProfile(Boolean(result.profile));
+      } catch (error) {
+        setPreview(null);
+        setImportError(error instanceof Error ? error.message : "读取文件失败。");
       }
-      if (!result.newCount && !result.profile) {
-        setImportError(
-          result.duplicateCount
-            ? `文件中的 ${result.duplicateCount} 篇报告都已存在，没有需要导入的内容。`
-            : "文件中的报告格式不正确，无法导入。"
-        );
-        return;
-      }
-      setPreview(result);
-      setWithProfile(Boolean(result.profile));
-    } catch (error) {
-      setPreview(null);
-      setImportError(error instanceof Error ? error.message : "读取文件失败。");
-    }
-  }, []);
+    },
+    [reports]
+  );
 
   // 把导出的备份 JSON 直接拖进窗口即可导入。
   useEffect(() => {
@@ -150,17 +165,23 @@ export default function HistoryPage() {
     return () => window.removeEventListener("drop", onDrop);
   }, [handleFile]);
 
-  const confirmImport = () => {
+  const confirmImport = async () => {
     if (!preview) return;
-    const { added, dropped, droppedExisting } = applyImport(preview, { profile: withProfile });
     setPreview(null);
     setImportError(null);
-    const notes = [`已导入 ${added} 篇报告`];
-    if (preview.profile && withProfile) notes.push("已更新个人设置");
-    if (dropped > 0) notes.push(`${dropped} 篇导入记录超出 ${MAX_REPORTS} 篇上限，未写入`);
-    if (droppedExisting > 0) notes.push(`本机最旧的 ${droppedExisting} 篇记录被挤出上限`);
-    setImportNote(`${notes.join("；")}。`);
-    window.setTimeout(() => setImportNote(null), 6000);
+    try {
+      const { added, dropped, droppedExisting } = await importReports(preview.reports);
+      if (preview.profile && withProfile) await saveProfileToServer(preview.profile);
+      const notes = [`已导入 ${added} 篇报告`];
+      if (preview.profile && withProfile) notes.push("已更新个人设置");
+      if (dropped > 0) notes.push(`${dropped} 篇导入记录超出 ${MAX_REPORTS} 篇上限，未写入`);
+      if (droppedExisting > 0) notes.push(`最早的 ${droppedExisting} 篇记录被挤出上限`);
+      setImportNote(`${notes.join("；")}。`);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "导入失败，请稍后重试。");
+    } finally {
+      window.setTimeout(() => setImportNote(null), 6000);
+    }
   };
 
   const issues = useMemo(() => {
@@ -217,7 +238,7 @@ export default function HistoryPage() {
               写作记录
             </h1>
             <p className="mt-2 text-[15px] text-ink-mute">
-              查看每次批改的分数、错误类型和修改记录。档案只保存在这台设备的浏览器中。
+              查看每次批改的分数、错误类型和修改记录，报告随账号云端保存。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -241,8 +262,6 @@ export default function HistoryPage() {
             </Link>
           </div>
         </div>
-
-        <SyncPanel />
 
         <input
           ref={fileInputRef}
@@ -287,8 +306,11 @@ export default function HistoryPage() {
               <div>
                 <p className="text-[15px] font-medium text-ink">确认导入</p>
                 <p className="mt-1 text-[14px] leading-6 text-ink-mute">
-                  文件共 {preview.totalInFile} 条记录，可新增 {preview.newCount} 篇
-                  {preview.duplicateCount > 0 ? `，跳过重复 ${preview.duplicateCount} 篇` : ""}
+                  文件共 {preview.totalInFile} 条记录，可新增{" "}
+                  {preview.reports.filter((r) => !reports.some((e) => e.id === r.id)).length} 篇
+                  {preview.reports.some((r) => reports.some((e) => e.id === r.id))
+                    ? `，跳过重复 ${preview.reports.filter((r) => reports.some((e) => e.id === r.id)).length} 篇`
+                    : ""}
                   {preview.invalidCount > 0 ? `，忽略无效 ${preview.invalidCount} 条` : ""}。
                 </p>
               </div>
@@ -315,12 +337,12 @@ export default function HistoryPage() {
                 />
                 <span>
                   同时导入个人设置（{examLabel(preview.profile.exam)} · 目标 {preview.profile.targetScore} 分）。
-                  勾选后会覆盖本机当前设置。
+                  勾选后会覆盖账号当前的个人设置。
                 </span>
               </label>
             )}
             <p className="mt-3 text-[13px] leading-5 text-ink-mute">
-              合并规则：按报告 id 去重，本机已有记录不会被修改或删除。
+              合并规则：按报告 id 去重，账号里已有的记录不会被修改或删除。
             </p>
           </div>
         )}
@@ -597,7 +619,7 @@ function EmptyHistory({ onImport }: { onImport: () => void }) {
           </button>
         </div>
         <p className="mt-7 inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
-          <BookOpen size={12} /> 不需要注册，记录只保存在本机
+          <BookOpen size={12} /> 登录账号后，记录随账号云端保存
         </p>
       </div>
 
@@ -608,7 +630,7 @@ function EmptyHistory({ onImport }: { onImport: () => void }) {
             ["分数趋势", "按得分率对比不同题型，避免被满分差异误导。"],
             ["高频错误", "同一种问题反复出现时，它会成为下一轮重点。"],
             ["错题练习", "同类错误会汇总到错题本，可以遮住答案自己改。"],
-            ["数据自主", "所有记录存储在本机，可随时导出或清除。"]
+            ["数据自主", "记录随账号保存，可随时导出或清除。"]
           ].map(([title, desc], index) => (
             <div key={title} className="flex gap-4 border-b border-line py-4">
               <span className="num text-[13px] italic text-jade/60">0{index + 1}</span>
@@ -797,3 +819,8 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
     </div>
   );
 }
+
+
+
+
+

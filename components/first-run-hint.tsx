@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, X } from "lucide-react";
-import { loadAiConfig, loadReports } from "@/lib/storage";
+import { loadAiConfig } from "@/lib/storage";
+import { fetchReports } from "@/lib/user-data";
 
 const DISMISS_KEY = "yanmo.firstrun.dismissed";
 
@@ -15,12 +16,21 @@ export function FirstRunHint() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    let alive = true;
     try {
       if (window.localStorage.getItem(DISMISS_KEY) === "1") return;
-      if (loadReports().length > 0) return;
       if (loadAiConfig()) return;
-      setShow(true);
-    } catch {}
+    } catch {
+      return;
+    }
+    fetchReports()
+      .then((reports) => {
+        if (alive && reports.length === 0) setShow(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, []);
 
   if (!show) return null;

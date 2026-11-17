@@ -17,7 +17,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CATEGORY_LABELS, SEVERITY_LABELS } from "@/lib/constants";
 import { collectMistakes, type MistakeItem } from "@/lib/mistakes";
-import { loadReports } from "@/lib/storage";
+import { fetchReports } from "@/lib/user-data";
 import { cn, formatDate } from "@/lib/utils";
 import { copyText } from "@/lib/clipboard";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
@@ -37,14 +37,24 @@ export default function MistakesPage() {
   const restoredRef = useRef(false);
 
   useEffect(() => {
+    let alive = true;
     const refresh = () => {
-      setReports(loadReports());
-      setLoading(false);
+      fetchReports()
+        .then((list) => {
+          if (alive) setReports(list);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (alive) setLoading(false);
+        });
     };
     refresh();
     document.title = "错题本 · 研墨 AI";
     window.addEventListener("yanmo:reports-changed", refresh);
-    return () => window.removeEventListener("yanmo:reports-changed", refresh);
+    return () => {
+      alive = false;
+      window.removeEventListener("yanmo:reports-changed", refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -350,7 +360,7 @@ export default function MistakesPage() {
             )}
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5 text-[13px] text-ink-mute">
-              <span>错题来自本机保存的批改报告，换浏览器或清除站点数据后会丢失。</span>
+              <span>错题来自账号下的批改报告，登录同一账号即可看到。</span>
               <Link href="/history" className="font-medium text-jade hover:underline">
                 查看写作档案
               </Link>
@@ -529,8 +539,10 @@ function EmptyMistakes({ hasReports }: { hasReports: boolean }) {
         </Link>
       </div>
       <p className="mt-6 inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
-        <Check size={13} className="text-jade" /> 错题只保存在本机浏览器
+        <Check size={13} className="text-jade" /> 错题随账号云端保存
       </p>
     </div>
   );
 }
+
+

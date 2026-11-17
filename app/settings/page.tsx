@@ -17,15 +17,13 @@ import {
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { EXAMS, LEVELS, maxScoreFor, targetOptions } from "@/lib/constants";
+import { clearAiConfig, loadAiConfig, saveAiConfig } from "@/lib/storage";
 import {
-  clearAiConfig,
-  clearReports,
-  loadAiConfig,
-  loadProfile,
-  loadReports,
-  saveAiConfig,
-  saveProfile
-} from "@/lib/storage";
+  clearReportsOnServer,
+  fetchProfile,
+  fetchReports,
+  saveProfileToServer
+} from "@/lib/user-data";
 import { apiTest, fetchAiStatus } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import type { AiConfig, AiStatus, ExamId, UserProfile } from "@/lib/types";
@@ -66,8 +64,12 @@ export default function SettingsPage() {
       setModel(storedConfig.model);
       setApiKey(storedConfig.apiKey);
     }
-    setProfile(loadProfile());
-    setReportCount(loadReports().length);
+    fetchProfile().then((loaded) => {
+      if (loaded) setProfile(loaded);
+    });
+    fetchReports()
+      .then((list) => setReportCount(list.length))
+      .catch(() => undefined);
     void fetchAiStatus().then(setStatus);
     // 估算本机已用存储，便于用户了解数据占用（不支持时静默跳过）。
     refreshStorageEstimate();
@@ -191,7 +193,7 @@ export default function SettingsPage() {
   const updateProfile = (patch: Partial<UserProfile>) => {
     const next = { ...profile, ...patch };
     setProfile(next);
-    saveProfile(next);
+    void saveProfileToServer(next).catch(() => undefined);
     setProfileNote(true);
     window.setTimeout(() => setProfileNote(false), 1800);
   };
@@ -208,8 +210,10 @@ export default function SettingsPage() {
     updateProfile({ exam, targetScore: target });
   };
 
-  const handleClearReports = () => {
-    clearReports();
+  const handleClearReports = async () => {
+    try {
+      await clearReportsOnServer();
+    } catch {}
     setReportCount(0);
     setClearConfirm(false);
     // 清除后重新估算占用，让"存储"一行及时刷新。
@@ -228,7 +232,7 @@ export default function SettingsPage() {
             设置
           </h1>
           <p className="mt-2 text-[15px] text-ink-mute">
-            配置 AI 接口、个人水平和本机数据。
+            配置 AI 接口、个人水平与账号数据。
           </p>
         </div>
 
@@ -243,7 +247,7 @@ export default function SettingsPage() {
             AI：{activeSource === "none" ? "未接入" : activeSource === "browser" ? "浏览器配置" : "服务器配置"}
           </span>
           <span>报告 {reportCount} 篇</span>
-          <span>存储：本机浏览器</span>
+          <span>存储：账号云端</span>
         </div>
 
         <div className="mt-9 grid gap-12 lg:grid-cols-[1fr_270px] lg:gap-14">
@@ -595,7 +599,7 @@ AI_MODEL=qwen-vl-max-latest`}
               <SectionHeading
                 index="03"
                 title="数据与隐私"
-                desc="报告和个人设置默认只保存在这台设备的浏览器中；仅在写作档案页手动启用「云备份」后，才会以密文上传，服务器无法读取内容。"
+                desc="批改报告和个人设置保存在你的账号下（服务器按用户隔离）；AI 接口 Key 只保存在本机浏览器，不上传服务器。"
               />
 
               <div className="mt-5 border-t border-line">
@@ -650,7 +654,7 @@ AI_MODEL=qwen-vl-max-latest`}
               </div>
 
               <p className="mt-4 text-[13px] leading-6 text-ink-mute">
-                更换浏览器、使用无痕模式或清除站点数据后，本机档案会丢失。重要记录请定期导出。
+                登录账号后，报告会随账号同步；AI Key 存在本机，更换浏览器需重新填写。重要记录也可导出备份。
               </p>
             </section>
           </div>
@@ -679,7 +683,7 @@ AI_MODEL=qwen-vl-max-latest`}
                 <div className="flex items-center justify-between">
                   <span className="text-[13.5px] text-ink-mute">存储</span>
                   <span className="text-[13px] text-ink-soft">
-                    {storageMb != null ? `本机 · 约 ${storageMb.toFixed(1)} MB` : "本机浏览器"}
+                    {storageMb != null ? `本机缓存 · 约 ${storageMb.toFixed(1)} MB` : "账号云端"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -733,3 +737,4 @@ function SectionHeading({ index, title, desc }: { index: string; title: string; 
     </div>
   );
 }
+

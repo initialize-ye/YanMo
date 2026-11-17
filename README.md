@@ -33,101 +33,33 @@
 
 ## 快速开始
 
-**Windows** 用户推荐桌面版 exe；**Android** 用户使用 PWA，或按文档打包成 TWA APK。
-开发者或想修改代码时，使用源码启动方式（需要 Node.js 18.17+，推荐 20+）。
+研墨现在是 **纯 Web 应用**：浏览器打开即可使用，报告按账号保存在服务器。
 
-### 方式一：Windows 桌面版（Electron，推荐）
+### 部署 / 自建
 
-1. 从 [GitHub Releases](https://github.com/initialize-ye/YanMo/releases/latest) 下载 `YanMo-*-win64.exe`。
-2. 双击运行，会打开独立窗口，不再需要浏览器或 Node.js。
-3. 首次使用在页面「设置」里填写 AI 接口信息。
+见 **[deploy/README.md](deploy/README.md)**（Ubuntu + Nginx + HTTPS + systemd 一键脚本）。
 
-桌面版说明：
+### 本地开发
 
-- 程序内部会启动一个只监听 `127.0.0.1:38217` 的本地服务，再加载应用界面。
-- 启动时显示加载窗口，服务就绪后再打开主窗口，不会出现长时间白屏。
-- 窗口大小、位置、最大化和缩放会记住，下次打开保持原样。
-- 顶部菜单提供：批改台 / 错题本 / 写作档案 / 设置快捷键、编辑操作、页面缩放、重新加载、打开数据目录与日志目录、检查更新、关于。
-- 页面加载失败时会弹窗提示，可直接重新加载或打开日志目录。
-- 报告和设置在 `%APPDATA%\YanMo` 中持久保存；升级程序不会丢失。
-- 未签名的 exe 首次运行可能出现 SmartScreen 提示，点击「更多信息 → 仍要运行」即可。
-
-常用快捷键：
-
-| 快捷键 | 功能 |
-| --- | --- |
-| `Ctrl + 1` ~ `Ctrl + 4` | 批改台 / 错题本 / 写作档案 / 设置 |
-| `Ctrl + R` | 重新加载 |
-| `Ctrl + =` / `Ctrl + -` / `Ctrl + 0` | 放大 / 缩小 / 实际大小 |
-| `F11` | 全屏 |
-| `Ctrl + Enter` | 在批改台开始批改 |
-
-### 方式二：双击启动（Windows，开发模式）
-
-适合已安装 Node.js、需要修改代码的用户。直接双击项目根目录的 **`启动项目.cmd`**（或 `启动项目.ps1`）。
-
-- 会打开一个 PowerShell 窗口，显示启动过程和错误提示。
-- 首次运行会自动 `npm install`；服务就绪后自动打开浏览器。
-- 出现任何错误时窗口不会立刻关闭，会停留等待回车，方便查看原因。
-- 启动前会自动检查 `.next`：若检测到上一次「生产构建」的残留（含 `BUILD_ID`），会先清理，避免开发模式加载到旧资源、导致页面显示旧版本或 hydration 报错。
-
-命令行方式（可选参数：`-Port` 指定端口，`-NoBrowser` 不自动打开浏览器，`-Clean` 强制清理缓存）：
-
-```powershell
-PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
-PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001 -NoBrowser
-```
-
-### 方式三：手动启动
-
-```powershell
+```bash
 npm install
 npm run dev
 ```
 
-打开 http://localhost:3000。
+打开 http://localhost:3000 ，注册一个账号即可开始。生产构建：
 
-### Android / PWA
-
-Android 用户不需要安装 Node.js：
-
-1. 用 Chrome 打开你的 HTTPS 部署地址。
-2. 在 Chrome 菜单中选择「添加到主屏幕」，即可像应用一样使用。
-3. 如需生成可安装的 `apk`，按 [Android PWA / TWA 打包说明](docs/android.md) 使用 PWABuilder 或 Bubblewrap。
-
-TWA APK 本质是加载线上网页的独立窗口，体积小；网页更新后不需要重新安装 APK。部署地址必须支持 HTTPS。
-
-### 打包 / 分发
-
-**Windows 桌面版（Electron）**
-
-```powershell
-npm install
-npm run build:exe
+```bash
+npm run build
+npm run prepare:standalone
+YANMO_DATA_DIR=./data PORT=3000 node .next/standalone/server.js
 ```
 
-输出：
+### 账号与数据
 
-```text
-dist-electron/YanMo-<version>-win64.exe
-```
-
-构建过程会：
-
-1. 用 Next.js standalone 模式构建应用；
-2. 把静态资源复制进 standalone 目录；
-3. 用 Electron 封装成本地窗口程序；
-4. 通过 `afterPack` 钩子补齐 standalone 服务的精简 `node_modules`；
-5. 生成单文件 Windows portable exe。
-
-桌面版固定使用本机端口 `38217`，只监听 `127.0.0.1`；数据保存在 `%APPDATA%\YanMo`。
-
-GitHub Actions 提供 **Build Windows Exe** 工作流：
-
-- **每次 `git push`（任意分支/标签）都会自动构建**桌面版 exe，产物在该次运行页面的 Artifacts 中下载（`yanmo-windows-exe`，保留 30 天）；
-- 推送 `v*` 标签时，exe 还会自动附加到对应的 GitHub Release；
-- 也可在 Actions 页面手动 `Run workflow` 触发；
-- 同一分支连续推送时**不会取消**进行中的构建，多个 push 会依次排队、各自产出 exe。
+- 邮箱 + 密码注册登录，密码以 scrypt 加盐哈希保存，会话为 HttpOnly Cookie。
+- 批改报告、个人设置按账号存储在服务器（`YANMO_DATA_DIR`，默认 `./data`），换设备登录同一账号即可看到。
+- AI Key 由用户各自在「设置」页填写，只保存在本机浏览器，不上传服务器。
+- 支持导出 / 导入整份档案 JSON 作为离线备份。
 
 ## 接入 AI
 

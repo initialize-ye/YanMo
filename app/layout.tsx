@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { DropGuard } from "@/components/drop-guard";
-import { PWARegister } from "@/components/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,18 +12,12 @@ export const metadata: Metadata = {
   keywords: ["考研英语", "英语作文批改", "手写识别", "AI 批改", "英语写作"],
   applicationName: "研墨 AI",
   authors: [{ name: "研墨 AI" }],
-  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
     ],
     apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }]
-  },
-  appleWebApp: {
-    capable: true,
-    title: "研墨 AI",
-    statusBarStyle: "default"
   },
   formatDetection: { telephone: false }
 };
@@ -45,7 +38,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </a>
         {children}
         <DropGuard />
-        <PWARegister />
       </body>
     </html>
   );

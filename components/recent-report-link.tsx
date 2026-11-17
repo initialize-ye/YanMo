@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CornerUpLeft } from "lucide-react";
-import { loadReports } from "@/lib/storage";
+import { fetchReports } from "@/lib/user-data";
 import { formatScore } from "@/lib/utils";
 
 interface RecentItem {
@@ -12,21 +12,26 @@ interface RecentItem {
   score: string;
 }
 
-/** 首页回访入口：本机已有报告时，显示「继续上次批改」，桌面端回到上一次的进度更快。 */
+/** 首页回访入口：已有报告时显示「继续上次批改」。 */
 export function RecentReportLink() {
   const [item, setItem] = useState<RecentItem | null>(null);
 
   useEffect(() => {
-    try {
-      const reports = loadReports();
-      if (!reports.length) return;
-      const r = reports[0];
-      setItem({
-        id: r.id,
-        title: r.meta.topicTitle,
-        score: `${formatScore(r.score.total)}/${formatScore(r.meta.maxScore)}`
-      });
-    } catch {}
+    let alive = true;
+    fetchReports()
+      .then((reports) => {
+        if (!alive || !reports.length) return;
+        const r = reports[0];
+        setItem({
+          id: r.id,
+          title: r.meta.topicTitle,
+          score: `${formatScore(r.score.total)}/${formatScore(r.meta.maxScore)}`
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, []);
 
   if (!item) return null;

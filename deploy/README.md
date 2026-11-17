@@ -1,7 +1,7 @@
 # 研墨 AI —— 服务器部署手册（Ubuntu 24.04 LTS，4C4G）
 
 > 目标：一台腾讯云服务器同时提供 ①电脑版网页公网访问 ②服务端 AI Key 代理
-> ③桌面 exe 更新/下载镜像 ④报告云备份（密文）。业务逻辑与桌面 exe 的本地优先行为不变。
+> 目标：一台腾讯云服务器托管 Web 端（账号登录、报告按用户存服务器、服务端可选 AI Key）。
 
 ---
 
@@ -33,7 +33,7 @@ node -v   # 应为 v22.x
 
 # 运行用户与目录
 sudo useradd --system --create-home --shell /usr/sbin/nologin yanmo || true
-sudo mkdir -p /srv/yanmo/app /srv/yanmo/data /srv/yanmo/public/downloads /srv/yanmo/public/updates /var/www/certbot
+sudo mkdir -p /srv/yanmo/app /srv/yanmo/data /var/www/certbot
 sudo chown -R yanmo:yanmo /srv/yanmo
 ```
 
@@ -106,48 +106,20 @@ echo "youruser:$(openssl passwd -apr1 '你的密码')" | sudo tee /etc/nginx/.ht
 #   auth_basic_user_file /etc/nginx/.htpasswd;
 sudo nginx -t && sudo systemctl reload nginx
 ```
-浏览器首次调用批改会弹一次登录框；桌面 exe 用的是本机服务，不受影响。
+浏览器首次调用批改会弹一次登录框（也可直接改用应用自带的账号体系，Basic Auth 仅作额外一层）。
 
 **方案 B：保留公开 + 严格限流**（已在 `yanmo.conf` 里配好 `limit_req`），适合给多人试用但接受一定额度风险。
 
 ---
 
-## 五、桌面 exe 更新与下载镜像
+## 五、账号与数据存储
 
-私有仓库导致 exe 内 GitHub 更新检查失效，改为走自建通道：
+- 用户注册后，密码以 **scrypt 加盐哈希** 存储在 `/srv/yanmo/data/users.json`；会话写入 `data/sessions.json`。
+- 批改报告按用户存于 `data/reports/<userId>.json`，个人设置存于 `data/profiles/<userId>.json`。
+- 目录由 systemd 的 `YANMO_DATA_DIR=/srv/yanmo/data` 指定（见 `deploy/env.example`），并纳入每日备份。
+- 备份脚本 `yanmo-backup` 每日打包整个 `data` 目录，保留 7 份（见第七节）。
 
-1. CI 在推 `v*` 标签时生成 `latest.json` 并随 Release 上传（见 `.github/workflows/windows-exe.yml`）。
-2. 服务器定时把最新 Release 的 `latest.json` 和 `*.exe` 拉到 `/srv/yanmo/public/`：
-   > 仓库设为 **公开** 时，下面的脚本用匿名 GitHub API + curl 即可，**无需任何令牌**。
-   ```bash
-   sudo apt -y install jq     # 已由 bootstrap 安装
-   sudo cp /srv/yanmo/app/scripts/pull-release.sh /usr/local/bin/yanmo-pull-release
-   sudo chmod +x /usr/local/bin/yanmo-pull-release
-   sudo -u yanmo /usr/local/bin/yanmo-pull-release   # 先手动跑一次
-   # crontab（yanmo 用户）
-   ( sudo -u yanmo crontab -l 2>/dev/null; echo '*/10 * * * * /usr/local/bin/yanmo-pull-release >> /srv/yanmo/data/pull.log 2>&1' ) | sudo -u yanmo crontab -
-   ```
-3. 校验：
-   ```bash
-   curl -s https://你的域名/updates/latest.json
-   curl -I https://你的域名/downloads/YanMo-0.2.8-win64.exe
-   ```
-
-桌面端在 `electron/main.cjs` 中优先读取 `YANMO_UPDATE_URL`（默认指向 `https://你的域名/updates/latest.json`），
-失败再回退 GitHub。发版流程仍是：`npm version patch` → commit → `git tag -a vX.Y.Z` → push main + tag。
-
----
-
-## 六、报告云备份（密文）
-
-- 浏览器端：写作档案页 → 「云备份」→ 生成同步码 → 上传。
-- 同步码 = 32 位随机码；`PBKDF2(code, salt, 200k)` 派生 AES-GCM-256 密钥，**上传前加密**。
-- 服务器只存 `sha256(code)` 命名的密文文件，无法解密（丢了同步码即无法恢复，请自行妥善保存）。
-- 数据目录：`/srv/yanmo/data/sync/`，单包上限 5MB。
-
----
-
-## 七、运维速查
+## 六、运维速查
 
 ```bash
 sudo systemctl restart yanmo          # 重启应用
@@ -166,13 +138,10 @@ sudo tar czf /srv/yanmo/backup-$(date +%F).tgz -C /srv yanmo/data
 
 ---
 
-## 八、验收清单
+## 七、验收清单
 
 - [ ] `node -v` 为 v22；`sudo ufw status` 仅 22/80/443；`swapon --show` 有 2G
 - [ ] `curl https://你的域名/` 返回首页 HTML
 - [ ] `curl https://你的域名/api/status` 返回 `{"serverConfigured":true,...}`
 - [ ] 不带 Key 在网页批改一篇成功（走服务端 Key）
 - [ ] 压测 `/api/grade` 超过限额返回 429
-- [ ] `curl https://你的域名/updates/latest.json` 返回版本 JSON
-- [ ] 安装新版 exe，点「检查更新」能发现新版本并下载
-- [ ] A 设备云备份 → B 设备同同步码恢复出全部报告；`sudo strings /srv/yanmo/data/sync/*.bin` 看不到题目明文

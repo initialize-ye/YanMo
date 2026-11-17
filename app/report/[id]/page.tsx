@@ -36,7 +36,8 @@ import {
   kindLabel,
   levelLabel
 } from "@/lib/constants";
-import { deleteReport, loadCompactMode, loadReport, saveCompactMode } from "@/lib/storage";
+import { loadCompactMode, saveCompactMode } from "@/lib/storage";
+import { fetchReport, deleteReportOnServer } from "@/lib/user-data";
 import {
   LANGUAGE_CATEGORIES,
   cn,
@@ -101,13 +102,16 @@ export default function ReportPage() {
     }
     setDrafts(restoredDrafts);
     setRevealed(restoredRevealed);
-    const loaded = loadReport(id);
-    setReport(loaded);
-    // 若本篇没有语言错误，默认落到「全部」，避免一进来就是个空列表。
-    const hasLanguageError =
-      loaded?.annotations.some((item) => isLanguageError(item.category)) ?? true;
-    setFilter(hasLanguageError ? "language" : "all");
-    setLoading(false);
+    fetchReport(id)
+      .then((loaded) => {
+        setReport(loaded);
+        // 若本篇没有语言错误，默认落到「全部」，避免一进来就是个空列表。
+        const hasLanguageError =
+          loaded?.annotations.some((item) => isLanguageError(item.category)) ?? true;
+        setFilter(hasLanguageError ? "language" : "all");
+      })
+      .catch(() => setReport(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {
@@ -384,8 +388,10 @@ export default function ReportPage() {
     } catch {}
   };
 
-  const handleDelete = () => {
-    deleteReport(report.id);
+  const handleDelete = async () => {
+    try {
+      await deleteReportOnServer(report.id);
+    } catch {}
     try {
       sessionStorage.removeItem(`yanmo.practice.${report.id}`);
     } catch {}

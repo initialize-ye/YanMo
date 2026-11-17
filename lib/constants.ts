@@ -210,3 +210,5 @@ export function defaultMeta(profile: UserProfile = DEFAULT_PROFILE): EssayMeta {
     level: profile.level
   };
 }
+
+export const MAX_REPORTS = 100;
