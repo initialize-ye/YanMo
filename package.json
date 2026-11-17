@@ -1,11 +1,11 @@
 {
   "name": "yanmo-ai",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "description": "考研英语手写作文批改工具",
   "author": "YanMo",
   "main": "electron/main.cjs",
-  "updateManifestUrl": "",
+  "updateManifestUrl": "https://yanmoai.online/updates/latest.json",
   "scripts": {
     "dev": "next dev",
     "dev:clean": "npm run clean && next dev",

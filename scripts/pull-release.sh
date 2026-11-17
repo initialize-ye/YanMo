@@ -55,23 +55,40 @@ fi
 
 # 只在需要时下载（同名且大小一致则跳过）
 EXPECT_SIZE="$(echo "$META" | jq -r --arg n "$EXE_NAME" '[.assets[] | select(.name==$n) | .size] | first // 0')"
-if [ -f "$DL_DIR/$EXE_NAME" ] && [ "$(stat -c%s "$DL_DIR/$EXE_NAME")" = "$EXPECT_SIZE" ]; then
+LOCAL_FILE="$DL_DIR/$EXE_NAME"
+COMPLETE=0
+if [ -f "$LOCAL_FILE" ] && [ "$(stat -c%s "$LOCAL_FILE")" = "$EXPECT_SIZE" ]; then
+  COMPLETE=1
+fi
+
+# 先写更新清单：exe 已镜像则指向本站，否则暂指向 GitHub（仓库公开后可下载）
+if [ "$COMPLETE" = "1" ]; then
+  URL="${PUBLIC_URL}/downloads/${EXE_NAME}"
+else
+  URL="$EXE_URL"
+fi
+jq -n --arg v "$VERSION" --arg u "$URL" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{version:$v, url:$u, notes:("见 GitHub Release v"+$v), publishedAt:$t}' > "$UP_DIR/latest.json.tmp"
+mv "$UP_DIR/latest.json.tmp" "$UP_DIR/latest.json"
+echo "[pull-release] 更新清单：$UP_DIR/latest.json（$VERSION → $URL）"
+
+if [ "$COMPLETE" = "1" ]; then
   echo "[pull-release] exe 已是最新：$EXE_NAME"
 else
   echo "[pull-release] 下载 $EXE_NAME ...（支持断点续传，网络慢时后续 cron 会继续）"
   # -C - 断点续传；低于 8KB/s 持续 60s 视为卡死，重试
   curl -fL -C - --retry 5 --retry-delay 5 --retry-all-errors \
        --connect-timeout 20 --speed-limit 8192 --speed-time 60 \
-       -H "User-Agent: $UA" -o "$DL_DIR/$EXE_NAME.part" "$EXE_URL"
-  mv "$DL_DIR/$EXE_NAME.part" "$DL_DIR/$EXE_NAME"
-  echo "[pull-release] exe 已更新：$DL_DIR/$EXE_NAME"
+       -H "User-Agent: $UA" -o "$LOCAL_FILE.part" "$EXE_URL"
+  mv "$LOCAL_FILE.part" "$LOCAL_FILE"
+  echo "[pull-release] exe 已更新：$LOCAL_FILE"
+  # 下载完成后把清单切换为本站地址
+  URL="${PUBLIC_URL}/downloads/${EXE_NAME}"
+  jq -n --arg v "$VERSION" --arg u "$URL" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{version:$v, url:$u, notes:("见 GitHub Release v"+$v), publishedAt:$t}' > "$UP_DIR/latest.json.tmp"
+  mv "$UP_DIR/latest.json.tmp" "$UP_DIR/latest.json"
+  echo "[pull-release] 清单已切换到本站：$URL"
 fi
-
-URL="${PUBLIC_URL}/downloads/${EXE_NAME}"
-jq -n --arg v "$VERSION" --arg u "$URL" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '{version:$v, url:$u, notes:("见 GitHub Release v"+$v), publishedAt:$t}' > "$UP_DIR/latest.json.tmp"
-mv "$UP_DIR/latest.json.tmp" "$UP_DIR/latest.json"
-echo "[pull-release] 更新清单已写入：$UP_DIR/latest.json（$VERSION → $URL）"
 
 # 清理旧 exe，只保留最近 3 个版本
 ls -1t "$DL_DIR"/YanMo-*-win64.exe 2>/dev/null | tail -n +4 | xargs -r rm -f
