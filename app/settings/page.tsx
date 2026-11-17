@@ -595,7 +595,7 @@ AI_MODEL=qwen-vl-max-latest`}
               <SectionHeading
                 index="03"
                 title="数据与隐私"
-                desc="报告和个人设置默认保存在这台设备的浏览器中，不会上传到研墨服务器。"
+                desc="报告和个人设置默认只保存在这台设备的浏览器中；仅在写作档案页手动启用「云备份」后，才会以密文上传，服务器无法读取内容。"
               />
 
               <div className="mt-5 border-t border-line">

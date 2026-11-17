@@ -1,0 +1,51 @@
+# 研墨 AI —— systemd 服务单元
+# 放置到 /etc/systemd/system/yanmo.service，然后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now yanmo
+#   sudo systemctl status yanmo
+#   journalctl -u yanmo -f
+
+[Unit]
+Description=YanMo AI (Next.js standalone)
+Documentation=https://github.com/initialize-ye/YanMo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yanmo
+Group=yanmo
+WorkingDirectory=/srv/yanmo/app/.next/standalone
+# 依赖 build 后执行的 npm run prepare:standalone 把 .next/static 复制到此处
+
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+# AI Key 等敏感配置放这里（chmod 600，属主 yanmo）
+EnvironmentFile=/srv/yanmo/app/.env.production
+
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# 运行数据（云备份密文等）
+ReadWritePaths=/srv/yanmo/data
+
+# ---- 加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

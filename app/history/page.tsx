@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SyncPanel } from "@/components/sync-panel";
 import { CATEGORY_LABELS, examLabel, kindLabel } from "@/lib/constants";
 import {
   MAX_REPORTS,
@@ -240,6 +241,8 @@ export default function HistoryPage() {
             </Link>
           </div>
         </div>
+
+        <SyncPanel />
 
         <input
           ref={fileInputRef}

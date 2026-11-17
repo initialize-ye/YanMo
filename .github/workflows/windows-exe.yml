@@ -49,6 +49,24 @@ jobs:
           ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
         run: npx electron-builder --win portable --config electron-builder.yml
 
+      - name: Generate update manifest
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $base = "${{ vars.YANMO_PUBLIC_URL }}"
+          if ([string]::IsNullOrWhiteSpace($base)) {
+            $base = "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          }
+          $manifest = [ordered]@{
+            version     = $version
+            url         = "$($base.TrimEnd('/'))/YanMo-$version-win64.exe"
+            notes       = "见 Release ${{ github.ref_name }}"
+            publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          }
+          $manifest | ConvertTo-Json | Set-Content -Encoding utf8 dist-electron/latest.json
+          Get-Content dist-electron/latest.json
+
       - name: Upload Windows exe
         uses: actions/upload-artifact@v4
         with:
@@ -61,5 +79,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist-electron/YanMo-*-win64.exe
+          files: |
+            dist-electron/YanMo-*-win64.exe
+            dist-electron/latest.json
           generate_release_notes: true

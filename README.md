@@ -267,6 +267,7 @@ lib/
 - Windows 桌面版使用 Electron 的持久化存储，数据位于 `%APPDATA%\YanMo`；PWA 和源码版使用浏览器 localStorage。
 - 图片只在识别时上传到你配置的 AI 服务；研墨不做对象存储，也不保留原图。
 - 报告最多保留 100 篇；可在写作档案页导入 / 导出 JSON 备份，或在设置页清除全部报告。
+- 云备份为可选功能：手动启用后报告以**密文**上传到自建服务器，服务器无法解密（见 `deploy/README.md`）。
 - PWA/浏览器版清除站点数据、更换浏览器或无痕模式会导致档案丢失；桌面版不要手动删除 `%APPDATA%\YanMo`。
 
 ## 开发脚本
@@ -360,7 +361,10 @@ DeepSeek 等服务商会用 402 表示账户余额或额度不足。到服务商
 
 - 生产环境请在服务端设置 `AI_API_KEY`，不要把 Key 暴露给浏览器。
 - `/api/ocr`、`/api/topic` 与 `/api/grade` 设置了 `maxDuration = 120`，部署平台的函数时长和请求体大小需要相应放宽（部分平台默认 4.5 MB）。
-- 当前档案存储在浏览器，没有跨设备同步；需要多端同步时应接入数据库与登录。
+- 用 Nginx 反代时请对 `/api/` 做限流，防止他人消耗服务端 Key（配置见 `deploy/nginx/yanmo.conf`）。
+- 完整自建服务器方案（Web 公网访问、服务端 Key、exe 更新镜像、报告云备份）见 **[deploy/README.md](deploy/README.md)**。
+- 桌面 exe 更新检查可脱离私有仓库：在 `package.json` 设置 `updateManifestUrl` 指向你的 `/updates/latest.json` 即可。
+- 报告云备份为端到端加密（PBKDF2 + AES-GCM），服务器只存密文；同步码丢失即无法恢复。
 
 ## 技术栈
 

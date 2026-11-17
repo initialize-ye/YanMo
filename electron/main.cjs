@@ -436,6 +436,16 @@ function compareVersions(a, b) {
   return 0;
 }
 
+// 读取 package.json 里配置的自建更新清单地址（域名确定后在 package.json 设置 updateManifestUrl）。
+function readConfiguredManifestUrl() {
+  try {
+    const pkg = require(path.join(app.getAppPath(), "package.json"));
+    return typeof pkg?.updateManifestUrl === "string" ? pkg.updateManifestUrl : "";
+  } catch {
+    return "";
+  }
+}
+
 async function checkForUpdates(silent = false) {
   if (updateCheckInFlight) return;
   updateCheckInFlight = true;
@@ -448,18 +458,49 @@ async function checkForUpdates(silent = false) {
 
 async function runUpdateCheck(silent = false) {
   const current = app.getVersion();
+  const RELEASE_TIMEOUT = 8000;
+
+  // 优先自建更新清单（私有仓库也能用），取不到再回退 GitHub Releases。
+  const manifestCandidates = [process.env.YANMO_UPDATE_URL, readConfiguredManifestUrl()]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value) => /^https?:\/\//i.test(value));
+
   let latest = "";
-  try {
-    const response = await fetch("https://api.github.com/repos/initialize-ye/YanMo/releases/latest", {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "YanMo-Desktop" },
-      signal: AbortSignal.timeout(8000)
-    });
-    if (response.ok) {
+  let downloadUrl = RELEASES_URL;
+
+  for (const manifestUrl of manifestCandidates) {
+    try {
+      const response = await fetch(manifestUrl, {
+        headers: { Accept: "application/json", "User-Agent": "YanMo-Desktop" },
+        signal: AbortSignal.timeout(RELEASE_TIMEOUT)
+      });
+      if (!response.ok) continue;
       const data = await response.json();
-      latest = typeof data?.tag_name === "string" ? data.tag_name : "";
+      const version = typeof data?.version === "string" ? data.version : "";
+      if (!version) continue;
+      latest = version;
+      if (typeof data?.url === "string" && /^https?:\/\//i.test(data.url)) {
+        downloadUrl = data.url;
+      }
+      break;
+    } catch {
+      // 换下一个来源
     }
-  } catch {
-    latest = "";
+  }
+
+  if (!latest) {
+    try {
+      const response = await fetch("https://api.github.com/repos/initialize-ye/YanMo/releases/latest", {
+        headers: { Accept: "application/vnd.github+json", "User-Agent": "YanMo-Desktop" },
+        signal: AbortSignal.timeout(RELEASE_TIMEOUT)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        latest = typeof data?.tag_name === "string" ? data.tag_name : "";
+      }
+    } catch {
+      latest = "";
+    }
   }
 
   if (latest && compareVersions(latest, current) > 0) {
@@ -467,12 +508,12 @@ async function runUpdateCheck(silent = false) {
       type: "info",
       title: "发现新版本",
       message: `当前版本 ${current}，最新版本 ${latest.replace(/^v/i, "")}`,
-      detail: "是否打开 GitHub Releases 页面下载新版本？",
+      detail: "是否打开下载页获取新版本？",
       buttons: ["打开下载页", "稍后"],
       defaultId: 0,
       cancelId: 1
     });
-    if (result.response === 0) void shell.openExternal(RELEASES_URL);
+    if (result.response === 0) void shell.openExternal(downloadUrl);
     return;
   }
 
@@ -496,12 +537,12 @@ async function runUpdateCheck(silent = false) {
     message: "无法获取更新信息",
     detail:
       `当前版本 ${current}。\n\n` +
-      "可能是网络不可用，或仓库为私有。你可以直接打开 Releases 页面查看是否有新版本。",
+      "可能是网络不可用，或更新地址尚未配置。你可以直接打开下载页查看是否有新版本。",
     buttons: ["打开下载页", "关闭"],
     defaultId: 1,
     cancelId: 1
   }).then((result) => {
-    if (result.response === 0) void shell.openExternal(RELEASES_URL);
+    if (result.response === 0) void shell.openExternal(downloadUrl);
   });
 }
 
