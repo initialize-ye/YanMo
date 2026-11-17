@@ -8,6 +8,14 @@
 
 set -euo pipefail
 
+# 防止多个 cron 并发下载互相覆盖
+LOCK_FILE="${TMPDIR:-/tmp}/yanmo-pull-release.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "[pull-release] 上一次同步仍在进行，跳过本次"
+  exit 0
+fi
+
 REPO="${YANMO_REPO:-initialize-ye/YanMo}"
 PUBLIC_DIR="${YANMO_PUBLIC_DIR:-/srv/yanmo/public}"
 DL_DIR="${PUBLIC_DIR}/downloads"
@@ -50,8 +58,11 @@ EXPECT_SIZE="$(echo "$META" | jq -r --arg n "$EXE_NAME" '[.assets[] | select(.na
 if [ -f "$DL_DIR/$EXE_NAME" ] && [ "$(stat -c%s "$DL_DIR/$EXE_NAME")" = "$EXPECT_SIZE" ]; then
   echo "[pull-release] exe 已是最新：$EXE_NAME"
 else
-  echo "[pull-release] 下载 $EXE_NAME ..."
-  curl -fL --retry 3 --connect-timeout 20 -H "User-Agent: $UA" -o "$DL_DIR/$EXE_NAME.part" "$EXE_URL"
+  echo "[pull-release] 下载 $EXE_NAME ...（支持断点续传，网络慢时后续 cron 会继续）"
+  # -C - 断点续传；低于 8KB/s 持续 60s 视为卡死，重试
+  curl -fL -C - --retry 5 --retry-delay 5 --retry-all-errors \
+       --connect-timeout 20 --speed-limit 8192 --speed-time 60 \
+       -H "User-Agent: $UA" -o "$DL_DIR/$EXE_NAME.part" "$EXE_URL"
   mv "$DL_DIR/$EXE_NAME.part" "$DL_DIR/$EXE_NAME"
   echo "[pull-release] exe 已更新：$DL_DIR/$EXE_NAME"
 fi
