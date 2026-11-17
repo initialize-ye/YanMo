@@ -16,6 +16,13 @@ SERVICE="${SERVICE:-yanmo}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/api/version}"
 EXPECTED_SHA="${1:-}"
 
+# root 直接执行时不需要 sudo；普通用户走 sudo（需配 NOPASSWD）。
+if [ "$(id -u)" -eq 0 ]; then
+  SUDO=""
+else
+  SUDO="sudo"
+fi
+
 cd "$APP_DIR"
 
 echo "==> [1/5] 拉取最新代码"
@@ -35,7 +42,7 @@ echo "==> [4/5] 准备 standalone 静态资源"
 npm run prepare:standalone
 
 echo "==> [5/5] 重启服务并做健康检查"
-sudo systemctl restart "$SERVICE"
+$SUDO systemctl restart "$SERVICE"
 
 # 等待服务就绪（最多约 30 秒）
 for i in $(seq 1 15); do
@@ -47,7 +54,7 @@ done
 
 if [ ! -s /tmp/yanmo-version.json ]; then
   echo "❌ 健康检查失败：$HEALTH_URL 无响应"
-  sudo systemctl status "$SERVICE" --no-pager || true
+  $SUDO systemctl status "$SERVICE" --no-pager || true
   exit 1
 fi
 
