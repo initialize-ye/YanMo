@@ -126,10 +126,13 @@ journalctl -u yanmo -f                # 应用日志
 sudo tail -f /var/log/nginx/error.log # Nginx 日志
 sudo certbot renew --dry-run          # 证书续期演练
 
-# 升级
+# 升级（手动）
 cd /srv/yanmo/app && sudo -u yanmo git pull
 sudo -u yanmo npm ci && sudo -u yanmo bash -c 'NODE_OPTIONS=--max-old-space-size=3072 npm run build && npm run prepare:standalone'
 sudo systemctl restart yanmo
+
+# 升级（推荐：交给 CI，见第八节）
+bash /srv/yanmo/app/deploy/deploy.sh
 
 # 备份数据目录
 sudo tar czf /srv/yanmo/backup-$(date +%F).tgz -C /srv yanmo/data
@@ -137,10 +140,73 @@ sudo tar czf /srv/yanmo/backup-$(date +%F).tgz -C /srv yanmo/data
 
 ---
 
-## 七、验收清单
+## 八、自动部署（推 main 即上线）
+
+仓库内置 `.github/workflows/deploy.yml`：向 `main` 推送后，GitHub Actions 通过 SSH 登录服务器执行 `deploy/deploy.sh`（拉代码 → `npm ci` → `npm run build` → `prepare:standalone` → 重启 → 校验 `/api/version` 的 commit）。
+
+### 8.1 服务器一次性准备
+
+```bash
+# 1) 生成专用于部署的 SSH 密钥（在本地或服务器上均可，公钥加到 yanmo 用户）
+ssh-keygen -t ed25519 -C "yanmo-deploy" -f ~/.ssh/yanmo_deploy -N ""
+
+# 把公钥写入服务器的部署用户 authorized_keys
+cat ~/.ssh/yanmo_deploy.pub | ssh 部署用户@服务器 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys'
+
+# 2) 允许部署用户免密重启服务（否则 CI 里的 sudo 会卡住）
+echo 'yanmo ALL=(ALL) NOPASSWD: /bin/systemctl restart yanmo, /bin/systemctl status yanmo' \
+  | sudo tee /etc/sudoers.d/yanmo-deploy
+sudo chmod 440 /etc/sudoers.d/yanmo-deploy
+
+# 3) 确认 yanmo 用户能对 origin 只读拉取（部署密钥 / Deploy key）
+sudo -u yanmo git -C /srv/yanmo/app fetch --dry-run
+```
+
+### 8.2 在 GitHub 仓库配置 Secrets
+
+`Settings → Secrets and variables → Actions → New repository secret`，添加：
+
+| Secret | 说明 | 示例 |
+| --- | --- | --- |
+| `DEPLOY_HOST` | 服务器地址 | `1.2.3.4` |
+| `DEPLOY_USER` | 部署用户 | `yanmo` |
+| `DEPLOY_SSH_KEY` | 上一步私钥全文（`~/.ssh/yanmo_deploy` 内容） | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `DEPLOY_PORT` | SSH 端口 | `22` |
+| `DEPLOY_PATH` | 仓库在服务器上的路径 | `/srv/yanmo/app` |
+
+> 若服务器 22 端口对公网关闭，可改用非标端口并填 `DEPLOY_PORT`；或使用自托管 runner（见 8.4）。
+
+### 8.3 验证
+
+```bash
+git add . && git commit -m "chore: ci" && git push origin main
+# 在 GitHub Actions 页面看到 Deploy 绿色通过后：
+curl https://你的域名/api/version     # commit 应为最新提交
+```
+
+### 8.4 备选：自托管 Runner（服务器不出公网也能部署）
+
+若服务器无法被 GitHub 主动 SSH 连接，在服务器安装 Actions Runner 并注册到本仓库，把 `deploy.yml` 的 `runs-on` 改成 `self-hosted`，步骤改为直接执行：
+
+```yaml
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash deploy/deploy.sh "${{ github.sha }}"
+        env:
+          APP_DIR: /srv/yanmo/app
+```
+
+这样 runner 在服务器本地拉取并构建，不需要开放 SSH 给 GitHub。
+
+---
+
+## 九、验收清单
 
 - [ ] `node -v` 为 v22；`sudo ufw status` 仅 22/80/443；`swapon --show` 有 2G
 - [ ] `curl https://你的域名/` 返回首页 HTML
 - [ ] `curl https://你的域名/api/status` 返回 `{"serverConfigured":true,...}`
+- [ ] `curl https://你的域名/api/version` 的 `commit` 与 `git rev-parse --short HEAD` 一致
+- [ ] 推送 main 后 GitHub Actions 的 Deploy 工作流通过（若启用自动部署）
 - [ ] 不带 Key 在网页批改一篇成功（走服务端 Key）
 - [ ] 压测 `/api/grade` 超过限额返回 429
