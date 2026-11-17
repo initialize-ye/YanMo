@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const ai = requireAi(request);
     const body = await readJsonBody(request);
     const { image } = parseTopicBody(body);
-    const result = await extractTopic(ai, image);
+    const result = await extractTopic(ai, image, request.signal);
     return Response.json(result);
   } catch (error) {
     return errorResponse(error);

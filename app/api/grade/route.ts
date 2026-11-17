@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const ai = requireAi(request);
     const body = await readJsonBody(request);
     const parsed = parseGradeBody(body);
-    const result = await gradeEssay(ai, parsed);
+    const result = await gradeEssay(ai, parsed, request.signal);
     return Response.json(result);
   } catch (error) {
     return errorResponse(error);

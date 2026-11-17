@@ -7,6 +7,7 @@ export interface PreparedImage {
 
 const MAX_INPUT_BYTES = 15 * 1024 * 1024;
 const MAX_EDGE = 1800;
+export const MAX_PAGES = 3;
 
 async function decode(file: File): Promise<{ source: CanvasImageSource; width: number; height: number }> {
   if (typeof createImageBitmap === "function") {
@@ -65,4 +66,12 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   const bytes = Math.round((dataUrl.length - "data:image/jpeg;base64,".length) * 0.75);
 
   return { dataUrl, width: targetWidth, height: targetHeight, bytes };
+}
+
+/** 一次处理多张作文照片（最多 MAX_PAGES 张），超出时抛错提示。 */
+export async function prepareImages(files: File[]): Promise<PreparedImage[]> {
+  if (files.length > MAX_PAGES) {
+    throw new Error(`最多一次上传 ${MAX_PAGES} 张图片，请分批提交。`);
+  }
+  return Promise.all(files.map((file) => prepareImage(file)));
 }

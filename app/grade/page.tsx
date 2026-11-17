@@ -24,6 +24,7 @@ import {
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SelfCheck } from "@/components/self-check";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   EXAMS,
   KINDS,
@@ -34,7 +35,7 @@ import {
   maxScoreFor,
   targetOptions
 } from "@/lib/constants";
-import { prepareImage, type PreparedImage } from "@/lib/image";
+import { MAX_PAGES, prepareImage, prepareImages, type PreparedImage } from "@/lib/image";
 import { SAMPLE_ESSAY } from "@/lib/sample";
 import { buildHistoryInsight, cn, countWords, wordRangeFor } from "@/lib/utils";
 import { clearDraft, loadAiConfig, loadDraft, saveDraft } from "@/lib/storage";
@@ -45,6 +46,7 @@ import {
   saveReportToServer
 } from "@/lib/user-data";
 import { apiGrade, apiOcr, apiTopic, fetchAiStatus } from "@/lib/client-api";
+import { toast } from "@/lib/toast";
 import type {
   AiConfig,
   AiStatus,
@@ -52,6 +54,7 @@ import type {
   EssayMeta,
   ExamId,
   GradeRequestBody,
+  GradeResult,
   LevelId,
   OcrResult,
   TopicImageResult
@@ -93,8 +96,10 @@ export default function GradePage() {
   const [mounted, setMounted] = useState(false);
   const [stage, setStage] = useState<Stage>("compose");
   const [mode, setMode] = useState<Mode>("image");
-  const [prepared, setPrepared] = useState<PreparedImage | null>(null);
-  const [fileName, setFileName] = useState<string>("");
+  const [preparedList, setPreparedList] = useState<PreparedImage[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
+  const prepared = preparedList[0] ?? null;
+  const fileName = fileNames[0] ?? "";
   const [preparing, setPreparing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [text, setText] = useState("");
@@ -125,6 +130,9 @@ export default function GradePage() {
   const [gradingError, setGradingError] = useState<FlowError | null>(null);
   const [gradingStartedAt, setGradingStartedAt] = useState<number | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [confirmSample, setConfirmSample] = useState(false);
+  const [pendingReport, setPendingReport] = useState<GradeResult | null>(null);
+  const gradeAbortRef = useRef<AbortController | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -314,21 +322,32 @@ export default function GradePage() {
     void extractTopicFromImage(topicImage);
   };
 
-  const handleFile = useCallback(async (selected: File) => {
+  const handleFiles = useCallback(async (selected: File[]) => {
+    if (!selected.length) return;
     setError(null);
     setPreparing(true);
     try {
-      const image = await prepareImage(selected);
-      setPrepared(image);
-      setFileName(selected.name || "作文照片");
+      const images = await prepareImages(selected);
+      const names = selected.map((file) => file.name || "作文照片");
+      // 追加到已有页之后，同一篇作文最多 3 页。
+      setPreparedList((current) => [...current, ...images].slice(0, MAX_PAGES));
+      setFileNames((current) => [...current, ...names].slice(0, MAX_PAGES));
     } catch (err) {
-      setPrepared(null);
-      setFileName("");
       setError(err instanceof Error ? err.message : "图片读取失败，请换一张重试。");
     } finally {
       setPreparing(false);
     }
   }, []);
+
+  const handleFile = useCallback(
+    (selected: File) => handleFiles([selected]),
+    [handleFiles]
+  );
+
+  const removePage = (index: number) => {
+    setPreparedList((current) => current.filter((_, i) => i !== index));
+    setFileNames((current) => current.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     if (stage !== "compose") return;
@@ -364,11 +383,14 @@ export default function GradePage() {
     return () => window.removeEventListener("drop", onDrop);
   }, [stage, mode, handleFile]);
 
-  const runRecognition = async (image: PreparedImage) => {
+  const runRecognition = async (images: PreparedImage[]) => {
     setOcrState("running");
     setOcrError(null);
     try {
-      const result = await apiOcr(image.dataUrl, aiConfig);
+      const result = await apiOcr(
+        images.map((item) => item.dataUrl),
+        aiConfig
+      );
       setOcr(result);
       setText(result.text);
       setOcrState("done");
@@ -389,7 +411,7 @@ export default function GradePage() {
     }
     setStage("recognize");
     setOcr(null);
-    await runRecognition(prepared);
+    await runRecognition(preparedList);
   };
 
   const startGrading = async (content: string) => {
@@ -416,6 +438,7 @@ export default function GradePage() {
 
     setError(null);
     setGradingError(null);
+    setPendingReport(null);
     setStage("grading");
     setGradingStartedAt(Date.now());
 
@@ -435,27 +458,63 @@ export default function GradePage() {
       history: buildHistoryInsight(historyReports)
     };
 
+    const controller = new AbortController();
+    gradeAbortRef.current = controller;
+
     try {
-      const result = await apiGrade(request, aiConfig);
+      const result = await apiGrade(request, aiConfig, controller.signal);
       try {
         await saveReportToServer(result);
-      } catch {
+      } catch (saveError) {
+        // 批改已成功、只是落库失败：保留结果，允许只重试保存，不重复消耗 AI。
+        setPendingReport(result);
         setGradingError({
-          message: "批改已完成，但报告保存到账号失败，请稍后重试（草稿已保留）。",
+          message:
+            saveError instanceof Error
+              ? saveError.message
+              : "批改已完成，但报告保存到账号失败，请稍后重试（草稿已保留）。",
           code: "SAVE_FAILED"
         });
         return;
       }
       clearDraft();
       setDraftRestored(false);
+      toast.success("批改完成，报告已保存到账号。");
       router.push(`/report/${result.id}`);
     } catch (err) {
       const flowError = err as { message?: string; code?: string };
+      if (flowError?.code === "ABORTED") {
+        setStage(ocr || mode === "image" ? "recognize" : "compose");
+        setGradingStartedAt(null);
+        setGradingError(null);
+        toast.info("已取消批改，草稿已保留。");
+        return;
+      }
       setGradingError({
         message: flowError?.message || "批改失败，请稍后重试。",
         code: flowError?.code
       });
+    } finally {
+      gradeAbortRef.current = null;
     }
+  };
+
+  const cancelGrading = () => {
+    gradeAbortRef.current?.abort();
+  };
+
+  const retrySaveReport = async () => {
+    if (!pendingReport) return;
+    try {
+      await saveReportToServer(pendingReport);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "保存失败，请稍后重试。");
+      return;
+    }
+    clearDraft();
+    setDraftRestored(false);
+    toast.success("报告已保存到账号。");
+    router.push(`/report/${pendingReport.id}`);
   };
 
   const handlePrimary = () => {
@@ -468,13 +527,14 @@ export default function GradePage() {
 
   const loadSampleText = () => {
     // 已有内容时先确认，避免一键「填入样文」把用户手打/识别的正文覆盖掉。
-    if (
-      text.trim() &&
-      text.trim() !== SAMPLE_ESSAY &&
-      !window.confirm("填入样文会覆盖当前已输入的正文，确定继续？")
-    ) {
+    if (text.trim() && text.trim() !== SAMPLE_ESSAY) {
+      setConfirmSample(true);
       return;
     }
+    applySampleText();
+  };
+
+  const applySampleText = () => {
     setText(SAMPLE_ESSAY);
     setMode("text");
     setError(null);
@@ -482,8 +542,8 @@ export default function GradePage() {
   };
 
   const resetImage = () => {
-    setPrepared(null);
-    setFileName("");
+    setPreparedList([]);
+    setFileNames([]);
     setOcr(null);
   };
 
@@ -502,7 +562,7 @@ export default function GradePage() {
       setStage("compose");
       return;
     }
-    await runRecognition(prepared);
+    await runRecognition(preparedList);
   };
 
   const discardDraft = () => {
@@ -511,8 +571,8 @@ export default function GradePage() {
     setText("");
     setCustomTitle("");
     setCustomPrompt("");
-    setPrepared(null);
-    setFileName("");
+    setPreparedList([]);
+    setFileNames([]);
     setOcr(null);
     setOcrState("idle");
     setOcrError(null);
@@ -641,8 +701,10 @@ export default function GradePage() {
                       onDrop={(event) => {
                         event.preventDefault();
                         setDragging(false);
-                        const dropped = event.dataTransfer.files?.[0];
-                        if (dropped) void handleFile(dropped);
+                        const dropped = Array.from(event.dataTransfer.files ?? []).filter((file) =>
+                          file.type.startsWith("image/")
+                        );
+                        if (dropped.length) void handleFiles(dropped);
                       }}
                       className={cn(
                         "relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors",
@@ -657,40 +719,64 @@ export default function GradePage() {
                             <div className="flex min-w-0 items-center gap-2 text-left">
                               <ImagePlus size={14} className="shrink-0 text-jade" />
                               <span className="max-w-[240px] truncate text-[14px] font-medium text-ink-soft">
-                                {fileName || "作文照片"}
+                                {preparedList.length > 1
+                                  ? `共 ${preparedList.length} 页 · ${fileName || "作文照片"}`
+                                  : fileName || "作文照片"}
                               </span>
                               <span className="text-[13px] text-ink-mute">
                                 {prepared.width}×{prepared.height}
                               </span>
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="btn-quiet !py-1"
-                              >
-                                更换
-                              </button>
+                              {preparedList.length < MAX_PAGES && (
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="btn-quiet !py-1"
+                                >
+                                  加一页
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={resetImage}
                                 className="btn-quiet !py-1"
-                                aria-label="移除图片"
+                                aria-label="移除全部图片"
                               >
                                 <X size={14} />
                               </button>
                             </div>
                           </div>
-                          <div className="mt-4 max-h-[430px] overflow-hidden bg-white">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={prepared.dataUrl}
-                              alt="待批改的手写作文照片"
-                              className="mx-auto max-h-[430px] w-auto max-w-full object-contain"
-                            />
+                          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                            {preparedList.map((page, index) => (
+                              <div
+                                key={`page-${index}`}
+                                className="relative border border-line bg-white p-1.5"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={page.dataUrl}
+                                  alt={`待批改的手写作文照片 第 ${index + 1} 页`}
+                                  className="mx-auto max-h-[220px] w-auto max-w-full object-contain"
+                                />
+                                <div className="mt-1 flex items-center justify-between gap-1 px-0.5">
+                                  <span className="truncate text-[12.5px] text-ink-mute">
+                                    第 {index + 1} 页 · {fileNames[index] || "作文照片"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removePage(index)}
+                                    aria-label={`移除第 ${index + 1} 页`}
+                                    className="shrink-0 p-0.5 text-ink-mute transition-colors hover:text-cinnabar"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                           <p className="mt-3 text-[13px] text-ink-mute">
-                            已自动压缩至长边 1800px，提高识别速度与准确率
+                            已自动压缩至长边 1800px；同一篇作文最多 {MAX_PAGES} 页，会按页顺序识别。
                           </p>
                         </div>
                       ) : (
@@ -743,10 +829,11 @@ export default function GradePage() {
                       tabIndex={-1}
                       aria-hidden="true"
                       className="hidden"
+                      multiple
                       onChange={(event) => {
-                        const selected = event.target.files?.[0];
+                        const selected = Array.from(event.target.files ?? []);
                         event.target.value = "";
-                        if (selected) void handleFile(selected);
+                        if (selected.length) void handleFiles(selected);
                       }}
                     />
                     <input
@@ -758,9 +845,9 @@ export default function GradePage() {
                       aria-hidden="true"
                       className="hidden"
                       onChange={(event) => {
-                        const selected = event.target.files?.[0];
+                        const selected = Array.from(event.target.files ?? []);
                         event.target.value = "";
-                        if (selected) void handleFile(selected);
+                        if (selected.length) void handleFiles(selected);
                       }}
                     />
 
@@ -1253,17 +1340,23 @@ export default function GradePage() {
               <div className="mt-7 grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
                 <div className="lg:sticky lg:top-[92px] lg:max-h-[calc(100vh-112px)] lg:overflow-y-auto overscroll-contain lg:pr-1 lg:self-start">
                   <div className="border border-line bg-white p-2">
-                    {prepared && (
+                    {preparedList.map((page, index) => (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={prepared.dataUrl}
-                        alt="手写作文原图"
-                        className="mx-auto max-h-[560px] w-auto max-w-full object-contain"
+                        key={`recognize-${index}`}
+                        src={page.dataUrl}
+                        alt={`手写作文原图 第 ${index + 1} 页`}
+                        className="mx-auto mb-1 w-auto max-w-full object-contain"
+                        style={{ maxHeight: preparedList.length > 1 ? 260 : 560 }}
                       />
-                    )}
+                    ))}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
-                    <span className="truncate">{fileName || "作文照片"}</span>
+                    <span className="truncate">
+                      {preparedList.length > 1
+                        ? `共 ${preparedList.length} 页`
+                        : fileName || "作文照片"}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setStage("compose")}
@@ -1446,6 +1539,8 @@ export default function GradePage() {
               error={gradingError}
               startedAt={gradingStartedAt}
               onRetry={() => void startGrading(text)}
+              onRetrySave={pendingReport ? () => void retrySaveReport() : undefined}
+              onCancel={cancelGrading}
               onBack={() => {
                 setStage(ocr || mode === "image" ? "recognize" : "compose");
                 setGradingError(null);
@@ -1455,6 +1550,18 @@ export default function GradePage() {
         </div>
       </main>
       <SiteFooter />
+      <ConfirmDialog
+        open={confirmSample}
+        title="填入示例作文？"
+        description="当前正文会被示例覆盖，未提交的内容将丢失。"
+        confirmLabel="填入示例"
+        danger
+        onCancel={() => setConfirmSample(false)}
+        onConfirm={() => {
+          setConfirmSample(false);
+          applySampleText();
+        }}
+      />
     </>
   );
 }
@@ -1561,6 +1668,8 @@ function GradingPanel({
   error,
   startedAt,
   onRetry,
+  onRetrySave,
+  onCancel,
   onBack
 }: {
   meta: EssayMeta;
@@ -1568,6 +1677,8 @@ function GradingPanel({
   error: FlowError | null;
   startedAt: number | null;
   onRetry: () => void;
+  onRetrySave?: () => void;
+  onCancel: () => void;
   onBack: () => void;
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
@@ -1617,23 +1728,39 @@ function GradingPanel({
                   <AlertTriangle size={15} /> {error.message}
                 </p>
                 <p className="mt-2 text-[13.5px] leading-6 text-ink-soft">
-                  {error.code === "AI_AUTH"
-                    ? "API Key 可能无效或已过期，请到设置页重新填写并测试连接。"
-                    : error.code === "AI_TIMEOUT"
-                      ? "模型响应时间过长。可以重试一次，或在设置中换一个更快的模型。"
-                      : error.code === "AI_NOT_CONFIGURED"
-                        ? "还没有配置 AI。到设置页填入 Key 后即可继续。"
-                        : error.code === "AI_QUOTA"
-                          ? "AI 账户余额或额度不足，请到服务商后台充值后重试。"
-                          : error.code === "STORAGE_FULL"
-                            ? "到设置页「数据与隐私」清理旧报告后重试；每个账号最多保留 100 篇，草稿已保留。"
-                            : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
+                  {error.code === "SAVE_FAILED"
+                    ? "批改已完成，只是保存到账号失败。点「重试保存」不会重新批改，也不消耗额度。"
+                    : error.code === "AI_AUTH"
+                      ? "API Key 可能无效或已过期，请到设置页重新填写并测试连接。"
+                      : error.code === "AI_TIMEOUT"
+                        ? "模型响应时间过长。可以重试一次，或在设置中换一个更快的模型。"
+                        : error.code === "AI_NOT_CONFIGURED"
+                          ? "还没有配置 AI。到设置页填入 Key 后即可继续。"
+                          : error.code === "AI_QUOTA"
+                            ? "AI 账户余额或额度不足，请到服务商后台充值后重试。"
+                            : error.code === "STORAGE_FULL"
+                              ? "到设置页「数据与隐私」清理旧报告后重试；每个账号最多保留 100 篇，草稿已保留。"
+                              : "可以重试一次；如果仍然失败，请检查设置中的接口地址与模型名称。"}
                 </p>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-                <button type="button" onClick={onRetry} className="btn btn-primary !px-4 !py-2.5 text-[14.5px]">
-                  <RefreshCw size={14} /> 重试批改
-                </button>
+                {error.code === "SAVE_FAILED" && onRetrySave ? (
+                  <button
+                    type="button"
+                    onClick={onRetrySave}
+                    className="btn btn-primary !px-4 !py-2.5 text-[14.5px]"
+                  >
+                    <RefreshCw size={14} /> 重试保存
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="btn btn-primary !px-4 !py-2.5 text-[14.5px]"
+                  >
+                    <RefreshCw size={14} /> 重试批改
+                  </button>
+                )}
                 <button type="button" onClick={onBack} className="btn btn-ghost !px-4 !py-2.5 text-[14.5px]">
                   返回修改文字
                 </button>
@@ -1709,6 +1836,14 @@ function GradingPanel({
               <p className="marginalia mt-8 text-[14px]">
                 先看清问题，再决定练什么。
               </p>
+
+              <button
+                type="button"
+                onClick={onCancel}
+                className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-mute transition-colors hover:text-cinnabar"
+              >
+                <X size={13} /> 取消批改（草稿会保留）
+              </button>
             </>
           )}
         </div>

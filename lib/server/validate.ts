@@ -40,12 +40,65 @@ function parseImageBody(body: unknown, label: string): { image: string } {
   return { image };
 }
 
-export function parseOcrBody(body: unknown): { image: string } {
-  return parseImageBody(body, "作文图片");
+export function parseOcrBody(body: unknown): { images: string[] } {
+  if (!body || typeof body !== "object") bad("请求格式不正确。");
+  const record = body as Record<string, unknown>;
+
+  // 兼容旧的单图字段 image；新前端传 images 数组。
+  const rawList = Array.isArray(record.images)
+    ? record.images
+    : typeof record.image === "string"
+      ? [record.image]
+      : null;
+  if (!rawList) bad("缺少作文图片。");
+  if (rawList.length === 0) bad("缺少作文图片。");
+  if (rawList.length > 3) bad("最多一次上传 3 张图片。");
+
+  const images = rawList.map((item) => {
+    if (typeof item !== "string") bad("图片格式不支持，请上传 JPG、PNG 或 WebP。");
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(item)) {
+      bad("图片格式不支持，请上传 JPG、PNG 或 WebP。");
+    }
+    return item;
+  });
+
+  const totalLength = images.reduce((sum, item) => sum + item.length, 0);
+  if (totalLength > 18_000_000) {
+    bad("图片总体积过大，请压缩或减少页数后再试。");
+  }
+  return { images };
 }
 
 export function parseTopicBody(body: unknown): { image: string } {
   return parseImageBody(body, "题目图片");
+}
+
+const MAX_EXPLAIN_TEXT = 6000;
+const MAX_EXPLAIN_FIELD = 400;
+
+/** 批注追问的入参校验：正文与批注字段都要限长，避免把任意长文本送进模型。 */
+export function parseExplainBody(body: unknown): {
+  text: string;
+  quote: string;
+  suggestion: string;
+  explanation: string;
+  category: string;
+  question?: string;
+} {
+  if (!body || typeof body !== "object") bad("请求格式不正确。");
+  const record = body as Record<string, unknown>;
+  const text = typeof record.text === "string" ? record.text.slice(0, MAX_EXPLAIN_TEXT) : "";
+  const quote = typeof record.quote === "string" ? record.quote.trim().slice(0, MAX_EXPLAIN_FIELD) : "";
+  if (!quote) bad("缺少要追问的原文片段。");
+  const suggestion =
+    typeof record.suggestion === "string" ? record.suggestion.trim().slice(0, MAX_EXPLAIN_FIELD) : "";
+  const explanation =
+    typeof record.explanation === "string" ? record.explanation.trim().slice(0, MAX_EXPLAIN_FIELD) : "";
+  const category = typeof record.category === "string" ? record.category : "grammar";
+  const question =
+    typeof record.question === "string" ? record.question.trim().slice(0, 200) : undefined;
+
+  return { text, quote, suggestion, explanation, category, question };
 }
 
 function parseHistory(value: unknown): HistoryInsight | undefined {

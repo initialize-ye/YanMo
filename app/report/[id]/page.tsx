@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowUp,
   ArrowUpRight,
+  BookCheck,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -20,14 +21,19 @@ import {
   Maximize2,
   Minimize2,
   PenLine,
+  Plus,
   Printer,
   RefreshCw,
-  Trash2
+  Tag,
+  Trash2,
+  X
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { AnnotatedEssay } from "@/components/report/annotated-essay";
 import { RewriteTabs } from "@/components/report/rewrite-tabs";
+import { ExplainPanel } from "@/components/report/explain-panel";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   CATEGORY_LABELS,
   IMPACT_LABELS,
@@ -37,7 +43,8 @@ import {
   levelLabel
 } from "@/lib/constants";
 import { loadCompactMode, saveCompactMode } from "@/lib/storage";
-import { fetchReport, deleteReportOnServer } from "@/lib/user-data";
+import { fetchReport, deleteReportOnServer, patchReport } from "@/lib/user-data";
+import { MAX_TAGS, MAX_TAG_LENGTH } from "@/lib/tags";
 import {
   LANGUAGE_CATEGORIES,
   cn,
@@ -50,6 +57,8 @@ import {
   splitEssayParagraphs
 } from "@/lib/utils";
 import { copyText } from "@/lib/clipboard";
+import { toast } from "@/lib/toast";
+import { useCountUp } from "@/lib/use-count-up";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
 
 type FilterKey = "language" | "all" | "other" | ErrorCategory;
@@ -75,6 +84,14 @@ export default function ReportPage() {
   const [practice, setPractice] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagsBusy, setTagsBusy] = useState(false);
+  const [reviewedAt, setReviewedAt] = useState<string | undefined>(undefined);
+  const [mastered, setMastered] = useState<Set<string>>(new Set());
+  const [reviewBusy, setReviewBusy] = useState(false);
+
+  const animatedTotal = useCountUp(report?.score.total ?? 0);
 
   useEffect(() => {
     setCompact(loadCompactMode());
@@ -108,6 +125,9 @@ export default function ReportPage() {
     fetchReport(id)
       .then((loaded) => {
         setReport(loaded);
+        setTags(loaded?.tags ?? []);
+        setReviewedAt(loaded?.review?.reviewedAt);
+        setMastered(new Set(loaded?.review?.mastered ?? []));
         // 若本篇没有语言错误，默认落到「全部」，避免一进来就是个空列表。
         const hasLanguageError =
           loaded?.annotations.some((item) => isLanguageError(item.category)) ?? true;
@@ -392,7 +412,9 @@ export default function ReportPage() {
       window.setTimeout(() => {
         setNoteCopyId((current) => (current === item.id ? null : current));
       }, 1800);
-    } catch {}
+    } catch {
+      toast.error("复制失败，请手动选中这段文字后复制。");
+    }
   };
 
   const handleDelete = async () => {
@@ -407,7 +429,75 @@ export default function ReportPage() {
     try {
       sessionStorage.removeItem(`yanmo.practice.${report.id}`);
     } catch {}
+    toast.success("报告已删除。");
     router.push("/history");
+  };
+
+  const persistTags = async (nextTags: string[]) => {
+    setTagsBusy(true);
+    try {
+      await patchReport(report.id, { tags: nextTags });
+      setTags(nextTags);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "标签保存失败，请稍后重试。");
+    } finally {
+      setTagsBusy(false);
+    }
+  };
+
+  const addTag = () => {
+    const value = tagInput.trim();
+    if (!value) return;
+    if (value.length > MAX_TAG_LENGTH) {
+      toast.error(`单个标签最多 ${MAX_TAG_LENGTH} 个字。`);
+      return;
+    }
+    if (tags.length >= MAX_TAGS) {
+      toast.error(`最多添加 ${MAX_TAGS} 个标签。`);
+      return;
+    }
+    if (tags.some((tag) => tag.toLowerCase() === value.toLowerCase())) {
+      setTagInput("");
+      return;
+    }
+    setTagInput("");
+    void persistTags([...tags, value]);
+  };
+
+  const removeTag = (value: string) => {
+    void persistTags(tags.filter((tag) => tag !== value));
+  };
+
+  const toggleReviewed = async () => {
+    const next = !reviewedAt;
+    setReviewBusy(true);
+    try {
+      await patchReport(report.id, { review: { reviewed: next } });
+      setReviewedAt(next ? new Date().toISOString() : undefined);
+      toast.success(next ? "已标记为复习过。" : "已取消复习标记。");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "更新失败，请稍后重试。");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const toggleMastered = async (annotationId: string) => {
+    const next = new Set(mastered);
+    if (next.has(annotationId)) next.delete(annotationId);
+    else next.add(annotationId);
+    setReviewBusy(true);
+    // 乐观更新，失败再回滚。
+    const previous = mastered;
+    setMastered(next);
+    try {
+      await patchReport(report.id, { review: { mastered: Array.from(next) } });
+    } catch (error) {
+      setMastered(previous);
+      toast.error(error instanceof Error ? error.message : "更新失败，请稍后重试。");
+    } finally {
+      setReviewBusy(false);
+    }
   };
 
   return (
@@ -435,9 +525,73 @@ export default function ReportPage() {
             <h1 className="display mt-2 text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight">
               {meta.topicTitle}
             </h1>
+
+            {/* 标签：用于写作档案筛选，最多 5 个 */}
+            <div className="print-hide mt-3 flex flex-wrap items-center gap-1.5">
+              <Tag size={13} className="text-ink-mute" />
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2 py-0.5 text-[12.5px] text-ink-soft"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    disabled={tagsBusy}
+                    aria-label={`移除标签 ${tag}`}
+                    className="text-ink-mute transition-colors hover:text-cinnabar disabled:opacity-50"
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+              {tags.length < MAX_TAGS && (
+                <span className="inline-flex items-center gap-1">
+                  <input
+                    value={tagInput}
+                    onChange={(event) => setTagInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    placeholder="加标签"
+                    maxLength={MAX_TAG_LENGTH}
+                    disabled={tagsBusy}
+                    aria-label="新增标签"
+                    className="h-6 w-24 rounded-full border border-line bg-white px-2 text-[12.5px] outline-none focus:border-jade"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    disabled={tagsBusy || !tagInput.trim()}
+                    aria-label="添加标签"
+                    className="grid h-6 w-6 place-items-center rounded-full text-ink-mute transition-colors hover:text-jade disabled:opacity-40"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="print-hide flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => void toggleReviewed()}
+              disabled={reviewBusy}
+              aria-pressed={Boolean(reviewedAt)}
+              title="标记这份报告已经复习过"
+              className={cn(
+                "btn !px-3 !py-2 text-[13.5px]",
+                reviewedAt ? "btn-primary" : "btn-ghost"
+              )}
+            >
+              <BookCheck size={13} />
+              {reviewedAt ? "已复习" : "标记已复习"}
+            </button>
             <button
               type="button"
               onClick={toggleCompact}
@@ -475,34 +629,14 @@ export default function ReportPage() {
             >
               <Printer size={15} />
             </button>
-            {confirmDelete ? (
-              <span className="flex items-center gap-1 border border-cinnabar/35 px-2 py-1">
-                <span className="text-[13px] text-cinnabar">删除这份报告？</span>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="px-1 text-[13px] font-medium text-cinnabar hover:underline"
-                >
-                  删除
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-1 text-[13px] text-ink-mute hover:underline"
-                >
-                  取消
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="btn-quiet inline-flex min-h-11 min-w-11 items-center justify-center !px-2"
-                aria-label="删除报告"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="btn-quiet inline-flex min-h-11 min-w-11 items-center justify-center !px-2"
+              aria-label="删除报告"
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
 
@@ -520,7 +654,7 @@ export default function ReportPage() {
             <div className="relative bg-[#e8f0fe] px-6 py-7 print:bg-white">
               <p className="text-[13px] font-medium text-ink-mute">预估得分</p>
               <div className="mt-2 flex items-end gap-2">
-                <span className="num text-[76px] leading-[0.85] text-jade">{formatScore(score.total)}</span>
+                <span className="num text-[76px] leading-[0.85] text-jade">{formatScore(animatedTotal)}</span>
                 <span className="pb-2 text-[15.5px] text-ink-mute">/ {meta.maxScore}</span>
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -685,6 +819,13 @@ export default function ReportPage() {
                 <h2 className="display mt-2.5 text-[clamp(1.6rem,2.8vw,2.1rem)]">
                   错误位置与修改建议
                 </h2>
+                {sortedAnnotations.length > 0 && (
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
+                    <BookCheck size={13} className="text-jade" />
+                    已掌握 {Array.from(mastered).filter((item) => sortedAnnotations.some((a) => a.id === item)).length} /{" "}
+                    {sortedAnnotations.length} 处
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2 print-hide">
                 <button
@@ -931,6 +1072,11 @@ export default function ReportPage() {
                         />
                         {SEVERITY_LABELS[annotation.severity]}
                       </span>
+                      {mastered.has(annotation.id) && (
+                        <span className="chip !py-0.5 !text-[13px] border-jade/30 bg-jade/[0.06] !text-jade">
+                          已掌握
+                        </span>
+                      )}
                       {unplacedIds.has(annotation.id) && (
                         <span
                           className="chip !py-0.5 !text-[13px] border-gold/40 bg-gold/[0.06] !text-gold"
@@ -1013,6 +1159,28 @@ export default function ReportPage() {
                         <p className="mt-2.5 text-[14px] leading-6 text-ink-soft">
                           {annotation.explanation}
                         </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <button
+                            type="button"
+                            onClick={() => void toggleMastered(annotation.id)}
+                            disabled={reviewBusy}
+                            aria-pressed={mastered.has(annotation.id)}
+                            className={cn(
+                              "print-hide inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors disabled:opacity-50",
+                              mastered.has(annotation.id)
+                                ? "text-jade"
+                                : "text-ink-mute hover:text-jade"
+                            )}
+                          >
+                            <BookCheck size={13} />
+                            {mastered.has(annotation.id) ? "已掌握（点击取消）" : "标记已掌握"}
+                          </button>
+                        </div>
+                        <ExplainPanel
+                          reportId={report.id}
+                          text={report.text}
+                          annotation={annotation}
+                        />
                         {practice && drafts[annotation.id]?.trim() && (
                           <div className="mt-3 border border-line bg-paper-light/70 px-3 py-2">
                             <p className="text-[12px] font-medium text-ink-mute">你的修改</p>
@@ -1272,6 +1440,15 @@ export default function ReportPage() {
         </p>
       </main>
       <SiteFooter />
+      <ConfirmDialog
+        open={confirmDelete}
+        title="删除这份报告？"
+        description="删除后无法恢复。如果需要保留，请先在写作档案页导出备份。"
+        confirmLabel="删除报告"
+        danger
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void handleDelete()}
+      />
     </>
   );
 }

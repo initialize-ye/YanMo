@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpRight, LogOut, Menu, UserRound, X } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, Settings, UserRound, X } from "lucide-react";
 import { Logo } from "./logo";
+import { ConfirmDialog } from "./confirm-dialog";
 import { cn } from "@/lib/utils";
 import { fetchMe, logout } from "@/lib/user-data";
+import { toast } from "@/lib/toast";
 import type { PublicUser } from "@/lib/types";
 
 const LINKS = [
@@ -22,6 +24,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<PublicUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +54,14 @@ export function SiteHeader() {
   }, [menuOpen]);
 
   const handleLogout = async () => {
-    await logout();
+    setConfirmLogout(false);
+    try {
+      await logout();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "退出登录失败，请稍后重试。");
+      return;
+    }
+    toast.success("已退出登录。");
     router.replace("/login");
     router.refresh();
   };
@@ -80,7 +90,8 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="print-hide sticky top-0 z-40 border-b border-line/80 bg-white/95 backdrop-blur">
+    <>
+      <header className="print-hide sticky top-0 z-40 border-b border-line/80 bg-white/95 backdrop-blur">
       <div className="wrap flex h-[68px] items-center justify-between gap-6">
         <Logo />
         <nav className="hidden items-center gap-1 md:flex" aria-label="主导航">
@@ -128,10 +139,18 @@ export function SiteHeader() {
                   className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-line bg-white p-1.5 shadow-lift"
                 >
                   <p className="truncate px-3 py-2 text-[12.5px] text-ink-mute">{user.email}</p>
+                  <Link
+                    href="/account"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[14px] text-ink-soft transition-colors hover:bg-paper-deep hover:text-ink"
+                  >
+                    <Settings size={15} /> 账号设置
+                  </Link>
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={handleLogout}
+                    onClick={() => setConfirmLogout(true)}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[14px] text-ink-soft transition-colors hover:bg-paper-deep hover:text-ink"
                   >
                     <LogOut size={15} /> 退出登录
@@ -195,19 +214,38 @@ export function SiteHeader() {
                 );
               })}
               {user && (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="mt-1 flex items-center justify-between rounded-xl border-t border-line px-3.5 py-3 text-[15px] font-medium text-ink-mute"
-                >
-                  退出登录（{user.email}）
-                  <LogOut size={16} />
-                </button>
+                <>
+                  <Link
+                    href="/account"
+                    onClick={() => setOpen(false)}
+                    className="mt-1 flex items-center justify-between rounded-xl border-t border-line px-3.5 py-3 text-[15px] font-medium text-ink-mute"
+                  >
+                    账号设置
+                    <Settings size={16} />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmLogout(true)}
+                    className="mt-1 flex items-center justify-between rounded-xl border-t border-line px-3.5 py-3 text-[15px] font-medium text-ink-mute"
+                  >
+                    退出登录（{user.email}）
+                    <LogOut size={16} />
+                  </button>
+                </>
               )}
             </div>
           </nav>
         </>
       )}
     </header>
+    <ConfirmDialog
+      open={confirmLogout}
+      title="退出登录？"
+      description="退出后需要重新输入邮箱和密码才能查看批改记录。"
+      confirmLabel="退出登录"
+      onCancel={() => setConfirmLogout(false)}
+      onConfirm={() => void handleLogout()}
+    />
+    </>
   );
 }

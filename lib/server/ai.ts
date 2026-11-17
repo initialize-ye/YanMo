@@ -129,6 +129,8 @@ interface ChatOptions {
   temperature?: number;
   json?: boolean;
   timeoutMs?: number;
+  /** 客户端断开或页面取消时中止上游请求，避免继续消耗额度。 */
+  signal?: AbortSignal;
 }
 
 function mapHttpError(status: number, detail: string): AppError {
@@ -150,7 +152,7 @@ function mapHttpError(status: number, detail: string): AppError {
   return new AppError(502, "AI_UPSTREAM", `AI 服务暂时不可用（${status}），请稍后重试。`, detail);
 }
 
-async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
+export async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
   const useJson = options.json !== false && process.env.AI_JSON_MODE !== "false";
 
   const once = async (jsonMode: boolean): Promise<string> => {
@@ -168,6 +170,14 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
     }
 
     let response: Response;
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), options.timeoutMs ?? MAX_TIMEOUT);
+    const external = options.signal;
+    const onExternalAbort = () => controller.abort();
+    if (external) {
+      if (external.aborted) controller.abort();
+      else external.addEventListener("abort", onExternalAbort, { once: true });
+    }
     try {
       response = await fetch(endpoint, {
         method: "POST",
@@ -176,9 +186,12 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
           Authorization: `Bearer ${ai.apiKey}`
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(options.timeoutMs ?? MAX_TIMEOUT)
+        signal: controller.signal
       });
     } catch (error) {
+      if (external?.aborted) {
+        throw new AppError(499, "AI_CANCELLED", "批改已取消。");
+      }
       const name = error instanceof Error ? error.name : "";
       if (name === "TimeoutError" || name === "AbortError") {
         throw new AppError(504, "AI_TIMEOUT", "AI 处理超时，请重试或换用响应更快的模型。");
@@ -189,6 +202,9 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
         "无法连接到 AI 服务，请检查网络、代理或接口地址。",
         error instanceof Error ? error.message : String(error)
       );
+    } finally {
+      clearTimeout(timeoutTimer);
+      external?.removeEventListener("abort", onExternalAbort);
     }
 
     const raw = await response.text();
@@ -294,7 +310,7 @@ async function callChat(ai: ResolvedAi, options: ChatOptions): Promise<string> {
   }
 }
 
-function extractJson(content: string): unknown {
+export function extractJson(content: string): unknown {
   const cleaned = content
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -312,7 +328,12 @@ function extractJson(content: string): unknown {
   }
 }
 
-export async function ocrEssay(ai: ResolvedAi, image: string): Promise<OcrResult> {
+export async function ocrEssay(
+  ai: ResolvedAi,
+  images: string[],
+  signal?: AbortSignal
+): Promise<OcrResult> {
+  const multi = images.length > 1;
   const content = await callChat(ai, {
     model: ai.visionModel,
     messages: [
@@ -320,13 +341,25 @@ export async function ocrEssay(ai: ResolvedAi, image: string): Promise<OcrResult
       {
         role: "user",
         content: [
-          { type: "image_url", image_url: { url: image, detail: "high" } },
-          { type: "text", text: "请转写这张手写作文图片中的英文。只输出 JSON。" }
+          ...images.map(
+            (url) =>
+              ({
+                type: "image_url" as const,
+                image_url: { url, detail: "high" as const }
+              })
+          ),
+          {
+            type: "text",
+            text: multi
+              ? `这里有 ${images.length} 张同一篇作文的照片（按上传顺序分页）。请按页顺序转写英文，页与页之间用一个空行分隔。只输出 JSON。`
+              : "请转写这张手写作文图片中的英文。只输出 JSON。"
+          }
         ]
       }
     ],
-    maxTokens: 2500,
-    temperature: 0.1
+    maxTokens: multi ? 4500 : 2500,
+    temperature: 0.1,
+    signal
   });
 
   const parsed = extractJson(content) as Record<string, unknown>;
@@ -349,7 +382,11 @@ export async function ocrEssay(ai: ResolvedAi, image: string): Promise<OcrResult
   return { text, confidence, warnings, model: ai.visionModel };
 }
 
-export async function extractTopic(ai: ResolvedAi, image: string): Promise<TopicImageResult> {
+export async function extractTopic(
+  ai: ResolvedAi,
+  image: string,
+  signal?: AbortSignal
+): Promise<TopicImageResult> {
   const content = await callChat(ai, {
     model: ai.visionModel,
     messages: [
@@ -363,7 +400,8 @@ export async function extractTopic(ai: ResolvedAi, image: string): Promise<Topic
       }
     ],
     maxTokens: 2000,
-    temperature: 0.1
+    temperature: 0.1,
+    signal
   });
 
   const parsed = extractJson(content) as Record<string, unknown>;
@@ -406,7 +444,11 @@ export async function extractTopic(ai: ResolvedAi, image: string): Promise<Topic
   };
 }
 
-export async function gradeEssay(ai: ResolvedAi, body: GradeRequestBody): Promise<GradeResult> {
+export async function gradeEssay(
+  ai: ResolvedAi,
+  body: GradeRequestBody,
+  signal?: AbortSignal
+): Promise<GradeResult> {
   const prompt = buildGradePrompt({
     text: body.text,
     meta: body.meta,
@@ -424,7 +466,8 @@ export async function gradeEssay(ai: ResolvedAi, body: GradeRequestBody): Promis
       { role: "user", content: prompt }
     ],
     maxTokens: 8000,
-    temperature: 0.3
+    temperature: 0.3,
+    signal
   });
 
   const parsed = extractJson(content);

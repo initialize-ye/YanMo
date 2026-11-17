@@ -3,6 +3,8 @@
 import type {
   AiConfig,
   AiStatus,
+  ExplainRequest,
+  ExplainResult,
   GradeRequestBody,
   GradeResult,
   OcrResult,
@@ -31,9 +33,19 @@ function headersFor(config: AiConfig | null): HeadersInit {
   return headers;
 }
 
-async function post<T>(path: string, body: unknown, config: AiConfig | null): Promise<T> {
+async function post<T>(
+  path: string,
+  body: unknown,
+  config: AiConfig | null,
+  externalSignal?: AbortSignal
+): Promise<T> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 180_000);
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+  }
   try {
     const response = await fetch(path, {
       method: "POST",
@@ -70,6 +82,10 @@ async function post<T>(path: string, body: unknown, config: AiConfig | null): Pr
   } catch (error) {
     if (error instanceof ClientApiError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") {
+      // 用户主动取消与超时是两件事：取消不弹错误，只回到批改台。
+      if (externalSignal?.aborted) {
+        throw new ClientApiError("已取消。", "ABORTED", 0);
+      }
       throw new ClientApiError("AI 处理超时，请稍后重试或换用更快的模型。", "TIMEOUT", 0);
     }
     throw new ClientApiError(
@@ -79,6 +95,7 @@ async function post<T>(path: string, body: unknown, config: AiConfig | null): Pr
     );
   } finally {
     window.clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
@@ -92,16 +109,28 @@ export async function fetchAiStatus(): Promise<AiStatus> {
   }
 }
 
-export function apiOcr(image: string, config: AiConfig | null): Promise<OcrResult> {
-  return post<OcrResult>("/api/ocr", { image }, config);
+export function apiOcr(
+  images: string[],
+  config: AiConfig | null,
+  signal?: AbortSignal
+): Promise<OcrResult> {
+  return post<OcrResult>("/api/ocr", { images }, config, signal);
 }
 
-export function apiTopic(image: string, config: AiConfig | null): Promise<TopicImageResult> {
-  return post<TopicImageResult>("/api/topic", { image }, config);
+export function apiTopic(
+  image: string,
+  config: AiConfig | null,
+  signal?: AbortSignal
+): Promise<TopicImageResult> {
+  return post<TopicImageResult>("/api/topic", { image }, config, signal);
 }
 
-export function apiGrade(body: GradeRequestBody, config: AiConfig | null): Promise<GradeResult> {
-  return post<GradeResult>("/api/grade", body, config);
+export function apiGrade(
+  body: GradeRequestBody,
+  config: AiConfig | null,
+  signal?: AbortSignal
+): Promise<GradeResult> {
+  return post<GradeResult>("/api/grade", body, config, signal);
 }
 
 export interface TestResult {
@@ -112,4 +141,12 @@ export interface TestResult {
 
 export function apiTest(candidate: AiConfig): Promise<TestResult> {
   return post<TestResult>("/api/ai/test", {}, candidate);
+}
+
+export function apiExplain(
+  body: ExplainRequest,
+  config: AiConfig | null,
+  signal?: AbortSignal
+): Promise<ExplainResult> {
+  return post<ExplainResult>("/api/explain", body, config, signal);
 }

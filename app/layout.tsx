@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { DropGuard } from "@/components/drop-guard";
 import { SessionGuard } from "@/components/session-guard";
+import { Toaster } from "@/components/toaster";
+import { NetworkStatus } from "@/components/network-status";
+import { CommandPalette } from "@/components/command-palette";
+import { MobileTabs } from "@/components/mobile-tabs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,8 +42,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           跳到主要内容
         </a>
         {children}
+        <MobileTabs />
         <DropGuard />
         <SessionGuard />
+        <NetworkStatus />
+        <CommandPalette />
+        <Toaster />
       </body>
     </html>
   );

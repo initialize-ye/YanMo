@@ -190,3 +190,53 @@ ${CATEGORY_GUIDE}
 - 每条 annotation 的 category 只能取 grammar、vocab、spelling、cohesion、logic、register、task 之一；语言问题优先使用前三类。
 - rewrites 可为空数组；modelEssay 若无法提供则为 null。`;
 }
+
+const CATEGORY_NAMES: Record<string, string> = {
+  grammar: "语法",
+  vocab: "用词与搭配",
+  spelling: "拼写",
+  cohesion: "衔接",
+  logic: "逻辑与论证",
+  register: "语域与文风",
+  task: "任务完成"
+};
+
+/** 单条批注的追问：解释为什么错、怎么改、给 2—3 个可复用例句。 */
+export function buildExplainPrompt(input: {
+  text: string;
+  quote: string;
+  suggestion: string;
+  explanation: string;
+  category: string;
+  question?: string;
+}): string {
+  const categoryName = CATEGORY_NAMES[input.category] ?? input.category;
+  const extra = input.question?.trim()
+    ? `\n学生的追问：${input.question.trim()}`
+    : "";
+
+  return `你是一位耐心、具体的考研英语写作老师。学生就批改报告中的一处问题向你追问，请把这一个知识点讲透，不要泛泛而谈。
+
+## 上下文
+- 问题类型：${categoryName}
+- 原文片段：${input.quote}
+- 参考改法：${input.suggestion}
+- 已有说明：${input.explanation}
+
+## 学生全文（供判断上下文，不要整体重写）
+"""
+${input.text}
+"""
+${extra}
+
+## 输出要求
+1. answer：用简体中文说清「为什么这里错、正确的规则是什么、以后怎么避免」，80—200 字，具体、可操作，不要重复已有说明的空话。
+2. examples：给 2—3 个正确用法的英文例句，贴合考研写作场景；每句后面用括号附一句中文说明改了什么。
+3. 不要输出 Markdown 代码块，只输出 JSON。
+
+## 输出 JSON
+{
+  "answer": "中文讲解",
+  "examples": ["English example 1（中文说明）", "English example 2（中文说明）"]
+}`;
+}

@@ -1,6 +1,6 @@
 import { AppError, errorResponse, readJsonBody } from "@/lib/server/errors";
 import { requireUser } from "@/lib/server/auth";
-import { parseReport } from "@/lib/server/report";
+import { parseReport, toReportSummary } from "@/lib/server/report";
 import { clearReports, deleteReport, listReports, upsertReport } from "@/lib/server/store";
 
 export const runtime = "nodejs";
@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    return Response.json({ reports: await listReports(user.id) });
+    const view = new URL(request.url).searchParams.get("view");
+    const reports = await listReports(user.id);
+    if (view === "full") {
+      return Response.json({ reports });
+    }
+    return Response.json({ reports: reports.map(toReportSummary) });
   } catch (error) {
     return errorResponse(error);
   }

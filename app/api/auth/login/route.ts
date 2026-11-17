@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!user || !(await verifyPassword(user, password))) {
       throw new AppError(401, "INVALID_LOGIN", "邮箱或密码不正确。");
     }
-    const token = await createSession(user.id);
+    const token = await createSession(user.id, request.headers.get("user-agent") ?? undefined);
     return Response.json(
       { user: toPublicUser(user) },
       { headers: { "Set-Cookie": sessionCookie(token, request) } }

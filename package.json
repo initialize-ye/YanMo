@@ -12,7 +12,9 @@
     "start": "npm run prepare:standalone && node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "prepare:standalone": "node scripts/prepare-standalone.mjs",
-    "lint": "next lint"
+    "lint": "next lint",
+    "reset-password": "node scripts/reset-password.mjs",
+    "test:unit": "node --import tsx --test tests/"
   },
   "engines": {
     "node": ">=18.17.0"
@@ -34,6 +36,7 @@
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2"
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/grade", "/mistakes", "/history", "/settings", "/report"];
+const PROTECTED_PREFIXES = ["/grade", "/mistakes", "/history", "/settings", "/report", "/account"];
 const AUTH_PAGES = ["/login"];
 
 function publicOrigin(request: NextRequest): string {
@@ -39,6 +39,7 @@ export const config = {
     "/history/:path*",
     "/settings/:path*",
     "/report/:path*",
+    "/account/:path*",
     "/login"
   ]
 };

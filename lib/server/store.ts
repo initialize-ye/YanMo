@@ -23,6 +23,18 @@ interface SessionRecord {
   userId: string;
   createdAt: string;
   expiresAt: string;
+  userAgent?: string;
+  lastSeenAt?: string;
+}
+
+/** 对外的会话视图：只暴露不透明的短 id，不返回 token 哈希。 */
+export interface SessionView {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  lastSeenAt: string | null;
+  userAgent: string | null;
+  current: boolean;
 }
 
 function dataDir(): string {
@@ -114,7 +126,7 @@ function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(userId: string, userAgent?: string): Promise<string> {
   const token = randomBytes(32).toString("base64url");
   return serialize("sessions", async () => {
     const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
@@ -124,11 +136,18 @@ export async function createSession(userId: string): Promise<string> {
       tokenHash: sha256(token),
       userId,
       createdAt: new Date(now).toISOString(),
-      expiresAt: new Date(now + SESSION_TTL_MS).toISOString()
+      expiresAt: new Date(now + SESSION_TTL_MS).toISOString(),
+      lastSeenAt: new Date(now).toISOString(),
+      ...(userAgent ? { userAgent: userAgent.slice(0, 200) } : {})
     });
     await writeJsonAtomic(SESSIONS_FILE(), alive);
     return token;
   });
+}
+
+/** 会话的短 id：取 token 哈希前 12 位，足够在列表里区分，又不可反推 token。 */
+function sessionId(tokenHash: string): string {
+  return tokenHash.slice(0, 12);
 }
 
 export async function getSessionUser(token: string): Promise<UserRecord | null> {
@@ -142,7 +161,122 @@ export async function getSessionUser(token: string): Promise<UserRecord | null> 
     void pruneSessions(tokenHash);
     return null;
   }
+  void touchSession(tokenHash);
   return findUserById(record.userId);
+}
+
+/** 更新最后活跃时间（节流：5 分钟内不重复写盘）。 */
+const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+const lastTouch = new Map<string, number>();
+function touchSession(tokenHash: string): void {
+  const now = Date.now();
+  const previous = lastTouch.get(tokenHash) ?? 0;
+  if (now - previous < TOUCH_INTERVAL_MS) return;
+  lastTouch.set(tokenHash, now);
+  void serialize("sessions", async () => {
+    const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+    let changed = false;
+    const next = sessions.map((session) => {
+      if (session.tokenHash === tokenHash) {
+        changed = true;
+        return { ...session, lastSeenAt: new Date(now).toISOString() };
+      }
+      return session;
+    });
+    if (changed) await writeJsonAtomic(SESSIONS_FILE(), next);
+  }).catch(() => undefined);
+}
+
+/** 列出某用户的全部有效会话（当前会话置顶）。 */
+export async function listSessions(userId: string, currentToken: string): Promise<SessionView[]> {
+  const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+  const now = Date.now();
+  const currentHash = currentToken ? sha256(currentToken) : "";
+  return sessions
+    .filter((session) => session.userId === userId && new Date(session.expiresAt).getTime() > now)
+    .map((session) => ({
+      id: sessionId(session.tokenHash),
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      lastSeenAt: session.lastSeenAt ?? null,
+      userAgent: session.userAgent ?? null,
+      current: session.tokenHash === currentHash
+    }))
+    .sort((a, b) => Number(b.current) - Number(a.current));
+}
+
+/** 撤销某个会话（按短 id）；返回是否命中。 */
+export async function revokeSession(userId: string, sessionIdToRevoke: string): Promise<boolean> {
+  return serialize("sessions", async () => {
+    const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+    const next = sessions.filter(
+      (session) =>
+        !(session.userId === userId && sessionId(session.tokenHash) === sessionIdToRevoke)
+    );
+    if (next.length === sessions.length) return false;
+    await writeJsonAtomic(SESSIONS_FILE(), next);
+    return true;
+  });
+}
+
+/** 撤销该用户除当前会话外的全部会话，返回撤销数量。 */
+export async function revokeOtherSessions(userId: string, currentToken: string): Promise<number> {
+  const currentHash = currentToken ? sha256(currentToken) : "";
+  return serialize("sessions", async () => {
+    const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+    const kept = sessions.filter(
+      (session) => session.userId !== userId || session.tokenHash === currentHash
+    );
+    const removed = sessions.length - kept.length;
+    if (removed > 0) await writeJsonAtomic(SESSIONS_FILE(), kept);
+    return removed;
+  });
+}
+
+/** 撤销某用户的全部会话（改密/注销后使用）。 */
+export async function revokeAllSessions(userId: string, exceptToken?: string): Promise<void> {
+  const exceptHash = exceptToken ? sha256(exceptToken) : "";
+  await serialize("sessions", async () => {
+    const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+    const kept = sessions.filter(
+      (session) => session.userId !== userId || (exceptHash && session.tokenHash === exceptHash)
+    );
+    await writeJsonAtomic(SESSIONS_FILE(), kept);
+  });
+}
+
+/** 修改密码：重新加盐哈希并保存。 */
+export async function updatePassword(userId: string, newPassword: string): Promise<void> {
+  const salt = randomBytes(16).toString("hex");
+  const hash = await hashPassword(newPassword, salt);
+  await serialize("users", async () => {
+    const users = await readJson<UserRecord[]>(USERS_FILE(), []);
+    const next = users.map((user) =>
+      user.id === userId
+        ? { ...user, salt, passwordHash: hash.toString("hex") }
+        : user
+    );
+    await writeJsonAtomic(USERS_FILE(), next);
+  });
+}
+
+/** 注销账号：级联删除该用户的报告、资料、会话与账号本身。 */
+export async function deleteUser(userId: string): Promise<void> {
+  await revokeAllSessions(userId);
+  for (const file of [reportsFile(userId), profileFile(userId)]) {
+    try {
+      await fs.promises.rm(file, { force: true });
+    } catch {
+      // 文件不存在时忽略
+    }
+  }
+  await serialize("users", async () => {
+    const users = await readJson<UserRecord[]>(USERS_FILE(), []);
+    await writeJsonAtomic(
+      USERS_FILE(),
+      users.filter((user) => user.id !== userId)
+    );
+  });
 }
 
 async function pruneSessions(tokenHash?: string): Promise<void> {

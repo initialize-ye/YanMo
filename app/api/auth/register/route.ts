@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       }
       throw error;
     }
-    const token = await createSession(user.id);
+    const token = await createSession(user.id, request.headers.get("user-agent") ?? undefined);
     return Response.json(
       { user: toPublicUser(user) },
       { headers: { "Set-Cookie": sessionCookie(token, request) } }

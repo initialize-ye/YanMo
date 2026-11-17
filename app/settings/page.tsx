@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EXAMS, LEVELS, maxScoreFor, targetOptions } from "@/lib/constants";
 import { clearAiConfig, loadAiConfig, saveAiConfig } from "@/lib/storage";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/lib/user-data";
 import { apiTest, fetchAiStatus } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import type { AiConfig, AiStatus, ExamId, UserProfile } from "@/lib/types";
 
 type TestState = "idle" | "testing" | "success" | "error";
@@ -42,7 +44,6 @@ export default function SettingsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [testState, setTestState] = useState<TestState>("idle");
   const [testMessage, setTestMessage] = useState("");
-  const [saveNote, setSaveNote] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile>({
     exam: "english1",
@@ -120,8 +121,7 @@ export default function SettingsPage() {
     const nextConfig: AiConfig = candidate;
     saveAiConfig(nextConfig);
     setConfig(nextConfig);
-    setSaveNote(true);
-    window.setTimeout(() => setSaveNote(false), 2200);
+    toast.success("AI 配置已保存到本机浏览器。");
     return nextConfig;
   };
 
@@ -167,6 +167,7 @@ export default function SettingsPage() {
     setApiKey("");
     setTestState("idle");
     setTestMessage("");
+    toast.info("已移除浏览器中的 AI 配置。");
   };
 
   // 修改任一接口字段时清空上次测试结果，避免"连接成功"等旧状态误导。
@@ -179,7 +180,9 @@ export default function SettingsPage() {
   const updateProfile = (patch: Partial<UserProfile>) => {
     const next = { ...profile, ...patch };
     setProfile(next);
-    void saveProfileToServer(next).catch(() => undefined);
+    saveProfileToServer(next).catch((error) => {
+      toast.error(error instanceof Error ? error.message : "个人设置保存失败，请稍后重试。");
+    });
     setProfileNote(true);
     window.setTimeout(() => setProfileNote(false), 1800);
   };
@@ -201,12 +204,15 @@ export default function SettingsPage() {
     try {
       await clearReportsOnServer();
     } catch (error) {
-      setDataError(error instanceof Error ? error.message : "清除失败，请稍后重试。");
+      const message = error instanceof Error ? error.message : "清除失败，请稍后重试。";
+      setDataError(message);
+      toast.error(message);
       setClearConfirm(false);
       return;
     }
     setReportCount(0);
     setClearConfirm(false);
+    toast.success("已清除全部报告。");
   };
 
   return (
@@ -429,15 +435,6 @@ export default function SettingsPage() {
                 <button type="button" onClick={saveOnly} className="btn btn-ghost !px-4 !py-2.5 text-[14px]">
                   仅保存
                 </button>
-                {saveNote && (
-                  <span
-                    role="status"
-                    aria-live="polite"
-                    className="inline-flex items-center gap-1 text-[13px] text-jade"
-                  >
-                    <Check size={12} /> 已保存
-                  </span>
-                )}
               </div>
 
               <div className="mt-5 flex items-start gap-2 border-t border-line pt-4 text-[13px] leading-6 text-ink-mute">
@@ -611,34 +608,14 @@ AI_MODEL=qwen-vl-max-latest`}
                       清除后无法恢复，已导出的备份不受影响
                     </p>
                   </div>
-                  {clearConfirm ? (
-                    <span className="flex items-center gap-2">
-                      <span className="text-[13px] text-cinnabar">确定清除？</span>
-                      <button
-                        type="button"
-                        onClick={handleClearReports}
-                        className="btn !bg-cinnabar !px-3 !py-1.5 text-[13px] text-paper"
-                      >
-                        确定
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClearConfirm(false)}
-                        className="btn btn-ghost !px-3 !py-1.5 text-[13px]"
-                      >
-                        取消
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setClearConfirm(true)}
-                      disabled={!reportCount}
-                      className="btn btn-ghost !px-3 !py-1.5 text-[13px] disabled:opacity-40"
-                    >
-                      <Trash2 size={12} /> 清除
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setClearConfirm(true)}
+                    disabled={!reportCount}
+                    className="btn btn-ghost !px-3 !py-1.5 text-[13px] disabled:opacity-40"
+                  >
+                    <Trash2 size={12} /> 清除
+                  </button>
                 </div>
               </div>
 
@@ -718,6 +695,19 @@ AI_MODEL=qwen-vl-max-latest`}
         </div>
       </main>
       <SiteFooter />
+      <ConfirmDialog
+        open={clearConfirm}
+        title="清除全部报告？"
+        description={
+          <>
+            将删除账号下的 {reportCount} 篇批改报告，且无法恢复。已导出的备份不受影响。
+          </>
+        }
+        confirmLabel="清除全部"
+        danger
+        onCancel={() => setClearConfirm(false)}
+        onConfirm={() => void handleClearReports()}
+      />
     </>
   );
 }

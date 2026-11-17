@@ -1,4 +1,4 @@
-import type { ErrorCategory, GradeResult, Severity } from "./types";
+import type { Annotation, ErrorCategory, Severity } from "./types";
 
 export interface MistakeItem {
   id: string;
@@ -12,6 +12,16 @@ export interface MistakeItem {
   suggestion: string;
   explanation: string;
   repeatCount: number;
+  mastered: boolean;
+}
+
+/** 只要满足这些字段，完整报告或列表投影都能汇总错题。 */
+interface MistakeSource {
+  id: string;
+  createdAt: string;
+  meta: { topicTitle: string };
+  annotations: Annotation[];
+  review?: { mastered?: string[] };
 }
 
 export function normalizeMistakeQuote(quote: string): string {
@@ -22,7 +32,7 @@ export function normalizeMistakeQuote(quote: string): string {
 }
 
 /** 把多份报告里的批注汇总成错题，并标出同一句话重复出现的次数。 */
-export function collectMistakes(reports: GradeResult[]): MistakeItem[] {
+export function collectMistakes(reports: MistakeSource[]): MistakeItem[] {
   const counts = new Map<string, number>();
 
   reports.forEach((report) => {
@@ -34,6 +44,7 @@ export function collectMistakes(reports: GradeResult[]): MistakeItem[] {
 
   const items: MistakeItem[] = [];
   reports.forEach((report) => {
+    const masteredIds = new Set(report.review?.mastered ?? []);
     report.annotations.forEach((annotation) => {
       const key = normalizeMistakeQuote(annotation.quote);
       items.push({
@@ -47,7 +58,8 @@ export function collectMistakes(reports: GradeResult[]): MistakeItem[] {
         quote: annotation.quote,
         suggestion: annotation.suggestion,
         explanation: annotation.explanation,
-        repeatCount: key ? (counts.get(key) ?? 1) : 1
+        repeatCount: key ? (counts.get(key) ?? 1) : 1,
+        mastered: masteredIds.has(annotation.id)
       });
     });
   });

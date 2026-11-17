@@ -1,5 +1,6 @@
 import { EXAMS, KINDS, LEVELS, maxScoreFor } from "../constants";
-import type { EssayKind, ExamId, GradeResult, LevelId } from "../types";
+import { MAX_TAGS, MAX_TAG_LENGTH } from "../tags";
+import type { EssayKind, ExamId, GradeResult, LevelId, ReportSummary } from "../types";
 
 const EXAM_IDS = EXAMS.map((item) => item.id);
 const KIND_IDS = KINDS.map((item) => item.id);
@@ -21,11 +22,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  *
  * 报告来自客户端，因此只信任结构、不信任内容：字段类型、取值范围、单篇体积都要在这里卡住，
  * 避免任意 JSON 写进 data/reports，也避免旧版本/手改的备份把脏数据带进账号。
+ * review 与 tags 是后加的可选字段，缺失时保持旧报告可读。
  */
 export function parseReport(value: unknown): GradeResult | null {
   if (!isRecord(value)) return null;
 
-  const { id, version, createdAt, text, meta, score, annotations } = value;
+  const { id, version, createdAt, text, meta, score, annotations, tags, review } = value;
   if (typeof id !== "string" || !id || id.length > MAX_ID_LENGTH) return null;
   if (version !== 1) return null;
   if (typeof createdAt !== "string" || Number.isNaN(Date.parse(createdAt))) return null;
@@ -48,7 +50,54 @@ export function parseReport(value: unknown): GradeResult | null {
   if (typeof total !== "number" || !Number.isFinite(total) || total < 0 || total > maxScore) return null;
 
   if (!Array.isArray(annotations) || annotations.length > MAX_ANNOTATIONS) return null;
+
+  if (tags !== undefined) {
+    if (!Array.isArray(tags) || tags.length > MAX_TAGS) return null;
+    if (
+      !tags.every(
+        (tag) => typeof tag === "string" && tag.length > 0 && tag.length <= MAX_TAG_LENGTH
+      )
+    ) {
+      return null;
+    }
+  }
+
+  if (review !== undefined) {
+    if (!isRecord(review)) return null;
+    const { reviewedAt, mastered } = review;
+    if (
+      reviewedAt !== undefined &&
+      (typeof reviewedAt !== "string" || Number.isNaN(Date.parse(reviewedAt)))
+    ) {
+      return null;
+    }
+    if (mastered !== undefined) {
+      if (!Array.isArray(mastered) || mastered.length > MAX_ANNOTATIONS) return null;
+      if (
+        !mastered.every(
+          (item) => typeof item === "string" && item.length > 0 && item.length <= MAX_ID_LENGTH
+        )
+      ) {
+        return null;
+      }
+    }
+  }
+
   if (JSON.stringify(value).length > MAX_REPORT_BYTES) return null;
 
   return value as unknown as GradeResult;
+}
+
+/** 列表页投影：剥掉正文与长文本字段，保留渲染与筛选所需内容。 */
+export function toReportSummary(report: GradeResult): ReportSummary {
+  return {
+    id: report.id,
+    createdAt: report.createdAt,
+    meta: report.meta,
+    score: { total: report.score.total, band: report.score.band },
+    stats: report.stats,
+    annotations: report.annotations ?? [],
+    ...(report.tags?.length ? { tags: report.tags } : {}),
+    ...(report.review ? { review: report.review } : {})
+  };
 }

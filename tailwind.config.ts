@@ -26,7 +26,7 @@ const config: Config = {
         cinnabar: {
           DEFAULT: "#d93025"
         },
-        gold: "#b06000",
+        gold: "#8a4d00",
         line: "#dadce0"
       },
       fontFamily: {

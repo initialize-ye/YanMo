@@ -172,6 +172,19 @@ function LoginInner() {
               </>
             )}
           </p>
+
+          <details className="mt-4 text-center text-[12.5px] leading-5 text-ink-mute">
+            <summary className="cursor-pointer list-none font-medium text-ink-mute hover:text-jade">
+              忘记密码？
+            </summary>
+            <p className="mt-2 text-left">
+              本项目不发送邮件。自建部署请在服务器执行
+              <code className="mx-1 rounded bg-ink/[0.06] px-1 py-0.5 font-mono">
+                node scripts/reset-password.mjs 你的邮箱
+              </code>
+              重置密码，重置后需用新密码登录。
+            </p>
+          </details>
         </div>
       </section>
     </main>

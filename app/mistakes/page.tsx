@@ -17,21 +17,23 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CATEGORY_LABELS, SEVERITY_LABELS } from "@/lib/constants";
 import { collectMistakes, type MistakeItem } from "@/lib/mistakes";
-import { fetchReports } from "@/lib/user-data";
+import { ApiError, fetchReports, patchReport } from "@/lib/user-data";
 import { cn, formatDate } from "@/lib/utils";
 import { copyText } from "@/lib/clipboard";
-import type { ErrorCategory, GradeResult } from "@/lib/types";
+import { toast } from "@/lib/toast";
+import type { ErrorCategory, ReportSummary } from "@/lib/types";
 
 type FilterKey = "all" | ErrorCategory;
 
 const MISTAKES_PRACTICE_KEY = "yanmo.mistakes.practice";
 
 export default function MistakesPage() {
-  const [reports, setReports] = useState<GradeResult[]>([]);
+  const [reports, setReports] = useState<ReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [practice, setPractice] = useState(false);
+  const [masteryFilter, setMasteryFilter] = useState<"all" | "open" | "mastered">("all");
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const restoredRef = useRef(false);
@@ -42,7 +44,13 @@ export default function MistakesPage() {
       .then((list) => {
         if (alive) setReports(list);
       })
-      .catch(() => undefined)
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 401) return;
+        toast.error("读取错题失败，请稍后重试。", {
+          label: "重试",
+          onClick: () => window.location.reload()
+        });
+      })
       .finally(() => {
         if (alive) setLoading(false);
       });
@@ -119,12 +127,30 @@ export default function MistakesPage() {
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = mistakes.filter((item) => {
     if (filter !== "all" && item.category !== filter) return false;
+    if (masteryFilter === "open" && item.mastered) return false;
+    if (masteryFilter === "mastered" && !item.mastered) return false;
     if (!normalizedQuery) return true;
     return [item.quote, item.suggestion, item.explanation, item.reportTitle]
       .join(" ")
       .toLowerCase()
       .includes(normalizedQuery);
   });
+
+  const masteredCount = mistakes.filter((item) => item.mastered).length;
+
+  const toggleMastered = async (item: MistakeItem) => {
+    const report = reports.find((entry) => entry.id === item.reportId);
+    if (!report) return;
+    const current = new Set(report.review?.mastered ?? []);
+    if (current.has(item.annotationId)) current.delete(item.annotationId);
+    else current.add(item.annotationId);
+    try {
+      const updated = await patchReport(report.id, { review: { mastered: Array.from(current) } });
+      setReports((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "更新失败，请稍后重试。");
+    }
+  };
 
   const persistPractice = (nextDrafts: Record<string, string>, nextRevealed: Set<string>) => {
     try {
@@ -253,6 +279,31 @@ export default function MistakesPage() {
                     </button>
                   );
                 })}
+                <span className="mx-1 hidden h-4 w-px bg-line sm:block" />
+                {([
+                  { key: "all", label: "全部掌握状态" },
+                  { key: "open", label: "未掌握" },
+                  { key: "mastered", label: "已掌握" }
+                ] as const).map((option) => {
+                  const active = masteryFilter === option.key;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setMasteryFilter(option.key)}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors",
+                        active
+                          ? "border-ink/25 bg-paper-deep text-ink"
+                          : "border-line bg-white text-ink-mute hover:border-jade/40 hover:text-jade"
+                      )}
+                    >
+                      {option.label}
+                      {option.key === "mastered" && masteredCount > 0 ? ` ${masteredCount}` : ""}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -349,6 +400,7 @@ export default function MistakesPage() {
                     draft={drafts[item.id] ?? ""}
                     onDraftChange={(value) => updateDraft(item.id, value)}
                     onToggleReveal={() => toggleReveal(item.id)}
+                    onToggleMastered={() => void toggleMastered(item)}
                   />
                 ))}
               </div>
@@ -374,7 +426,8 @@ function MistakeCard({
   revealed,
   draft,
   onDraftChange,
-  onToggleReveal
+  onToggleReveal,
+  onToggleMastered
 }: {
   item: MistakeItem;
   practice: boolean;
@@ -382,6 +435,7 @@ function MistakeCard({
   draft: string;
   onDraftChange: (value: string) => void;
   onToggleReveal: () => void;
+  onToggleMastered: () => void;
 }) {
   const showReference = !practice || revealed;
   const [copied, setCopied] = useState(false);
@@ -396,7 +450,9 @@ function MistakeCard({
       await copyText(lines.join("\n"));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
-    } catch {}
+    } catch {
+      toast.error("复制失败，请手动选中后复制。");
+    }
   };
 
   return (
@@ -421,7 +477,23 @@ function MistakeCard({
             重复 {item.repeatCount} 次
           </span>
         )}
-        <span className="ml-auto text-[13px] text-ink-mute">{formatDate(item.createdAt)}</span>
+        {item.mastered && (
+          <span className="rounded-full border border-jade/30 bg-jade/[0.06] px-2 py-0.5 text-[12px] font-medium text-jade">
+            已掌握
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onToggleMastered}
+          aria-pressed={item.mastered}
+          className={cn(
+            "ml-auto text-[12.5px] font-medium transition-colors",
+            item.mastered ? "text-jade hover:underline" : "text-ink-mute hover:text-jade"
+          )}
+        >
+          {item.mastered ? "取消掌握" : "标记已掌握"}
+        </button>
+        <span className="text-[13px] text-ink-mute">{formatDate(item.createdAt)}</span>
       </div>
 
       <div className="mt-3 border-l-2 border-cinnabar/45 bg-cinnabar/[0.035] px-3 py-2.5">

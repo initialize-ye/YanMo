@@ -26,8 +26,8 @@ export interface AnnotationPlacement {
 /**
  * 把批注分配回原文，并返回无法定位的批注。
  *
- * 顺序扫描段落，每条批注只占用一处匹配位置；同一句被重复标注时，
- * 会依次匹配到段内的下一个出现位置，而不是全部挤在第一次出现的地方。
+ * 每条批注在段内找第一处未被占用的匹配位置：同一句被重复标注时会顺延到下一个出现位置，
+ * 但不要求批注数组本身按正文顺序排列（前端拿到的顺序可能来自 AI，是乱序的）。
  * 编号始终是批注在传入数组中的序号，保证正文角标与右侧批注列表一致。
  */
 export function placeAnnotations(
@@ -38,13 +38,27 @@ export function placeAnnotations(
   const placed = new Set<string>();
 
   paragraphs.forEach((paragraph, paragraphIndex) => {
-    let cursor = 0;
+    const taken: Array<{ start: number; end: number }> = [];
     annotations.forEach((annotation, index) => {
       if (placed.has(annotation.id)) return;
       const quote = annotation.quote.replace(/\s+/g, " ").trim();
       if (!quote) return;
 
-      const start = paragraph.indexOf(quote, cursor);
+      // 从段首开始查找，跳过已被其他批注占用的区间。
+      let searchFrom = 0;
+      let start = -1;
+      while (searchFrom <= paragraph.length) {
+        const found = paragraph.indexOf(quote, searchFrom);
+        if (found === -1) break;
+        const overlaps = taken.some(
+          (range) => found < range.end && found + quote.length > range.start
+        );
+        if (!overlaps) {
+          start = found;
+          break;
+        }
+        searchFrom = found + 1;
+      }
       if (start === -1) return;
 
       let end = start + quote.length;
@@ -54,10 +68,13 @@ export function placeAnnotations(
       }
 
       byParagraph[paragraphIndex].push({ annotation, start, end, number: index + 1 });
+      taken.push({ start, end });
       placed.add(annotation.id);
-      cursor = end;
     });
   });
+
+  // 段内按出现位置排序，保证正文角标与阅读顺序一致。
+  byParagraph.forEach((placements) => placements.sort((a, b) => a.start - b.start));
 
   return {
     byParagraph,
@@ -101,7 +118,14 @@ export function countWords(text: string): number {
   return matches ? matches.length : 0;
 }
 
-export function buildHistoryInsight(reports: GradeResult[]): HistoryInsight | undefined {
+/** 列表接口返回的轻量投影也能满足这份统计所需的最小结构。 */
+interface InsightSource {
+  annotations: GradeResult["annotations"];
+  score: { total: number };
+  meta: { maxScore: number };
+}
+
+export function buildHistoryInsight(reports: InsightSource[]): HistoryInsight | undefined {
   if (!reports.length) return undefined;
   const counts = new Map<ErrorCategory, number>();
   reports.forEach((report) => {
@@ -120,12 +144,18 @@ export function buildHistoryInsight(reports: GradeResult[]): HistoryInsight | un
   return { total: reports.length, recentScores, topIssues };
 }
 
-export function scorePercent(result: GradeResult): number {
+/** 完整报告与列表投影都满足这个最小结构。 */
+interface ScoreSource {
+  meta: { maxScore: number };
+  score: { total: number };
+}
+
+export function scorePercent(result: ScoreSource): number {
   if (!result.meta.maxScore) return 0;
   return Math.round((result.score.total / result.meta.maxScore) * 100);
 }
 
-export function averagePercent(reports: GradeResult[]): number {
+export function averagePercent(reports: ScoreSource[]): number {
   if (!reports.length) return 0;
   const sum = reports.reduce((acc, report) => acc + scorePercent(report), 0);
   return Math.round(sum / reports.length);

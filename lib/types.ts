@@ -59,6 +59,12 @@ export interface NextStep {
   minutes: number;
 }
 
+/** 报告上叠加的复习状态：已复习时间与已掌握的批注 id。 */
+export interface ReportReview {
+  reviewedAt?: string;
+  mastered?: string[];
+}
+
 export interface GradeResult {
   version: 1;
   id: string;
@@ -88,7 +94,52 @@ export interface GradeResult {
   };
   source: "ai";
   model?: string;
+  tags?: string[];
+  review?: ReportReview;
 }
+
+/**
+ * 列表页/统计页用的报告投影：只带渲染与筛选需要的字段，
+ * 不包含正文、段落改写、范文、建议与训练清单，避免每次翻档案都传输整篇作文。
+ */
+export interface ReportSummary {
+  id: string;
+  createdAt: string;
+  meta: EssayMeta & { maxScore: number };
+  score: {
+    total: number;
+    band: string;
+  };
+  stats: GradeResult["stats"];
+  annotations: Annotation[];
+  tags?: string[];
+  review?: ReportReview;
+}
+
+/** PATCH /api/reports/[id] 的请求体：只允许改标签与复习状态。 */
+export interface ReportPatch {
+  tags?: string[];
+  review?: {
+    reviewed?: boolean;
+    mastered?: string[];
+  };
+}
+
+export interface ExplainRequest {
+  text: string;
+  quote: string;
+  suggestion: string;
+  explanation: string;
+  category: ErrorCategory;
+  question?: string;
+}
+
+export interface ExplainResult {
+  answer: string;
+  examples: string[];
+  model?: string;
+}
+
 
 export interface UserProfile {
   exam: ExamId;

@@ -23,6 +23,10 @@
 - **简洁模式**：报告顶部一键切换，隐藏优点/问题分析、段落重写、参考范文和训练清单，只保留估分、语言错误与精简建议；开关状态会记住。
 - **段落改写与参考范文**：保留原意的段落改写 + 高分范文，并解释范文亮点，不鼓励整篇背诵。
 - **下一步练习**：结合个人水平、目标分和账号下的历史高频错误，生成 2–3 条建议与可执行的练习清单。
+- **多页拍照**：同一篇作文可一次上传最多 3 张照片，按页顺序识别成一个文本。
+- **批注追问**：对任一处错误点「再讲讲」，用你的 AI 接口讲透规则并给例句（按用户每小时限流）。
+- **复习闭环**：报告可标记「已复习」、逐条标「已掌握」；错题本与写作档案按掌握状态、标签筛选。
+- **账号安全**：设置里可改密码、查看并退出其他登录设备、注销账号（级联删除数据）。
 - **写作档案**：分数趋势、错误类型分布、按题目/试卷/题型搜索、逐篇回看；支持导入导出 JSON 备份。
 - **草稿自动保存**：批改台的作文内容、题目和设置会自动保存在本机，刷新或重新打开后可恢复。
 - **移动端导航**：手机上面板菜单可以直接进入批改台、错题本、写作档案和设置。
@@ -145,44 +149,56 @@ AI_TEXT_MODEL=qwen-plus
 
 | 路径 | 说明 |
 | --- | --- |
-| `/` | 首页、功能说明、评分标准 |
-| `/grade` | 批改台：上传 / 文字稿、草稿自动保存、提交前自查、题目识别 → 核对 → 批改 |
-| `/report/[id]` | 批改报告：估分、维度、逐句修改、练习模式、段落改写、范文 |
-| `/mistakes` | 错题本：错误汇总、类型筛选、重复错误、练习模式 |
-| `/history` | 写作档案：趋势、高频错误、搜索、导入导出 |
+| `/` | 首页、功能说明、评分标准、三步上手引导 |
+| `/grade` | 批改台：多页照片 / 文字稿、草稿自动保存、提交前自查、题目识别 → 核对 → 批改（可取消） |
+| `/report/[id]` | 批改报告：估分、维度、逐句修改、练习模式、段落改写、范文；支持「再讲讲」追问、标记已复习 / 已掌握、打标签 |
+| `/mistakes` | 错题本：错误汇总、类型筛选、重复错误、练习模式、掌握状态筛选 |
+| `/history` | 写作档案：时间范围、趋势、得分分布、连续批改、目标达成率、标签筛选、命令面板入口、导入导出 |
 | `/settings` | AI 接入、个人水平、数据导出与清理 |
+| `/account` | 账号设置：修改密码、登录设备管理、注销账号 |
+
+全局能力：`Ctrl / ⌘ + K` 命令面板、移动端底部导航、Toast 通知、断网横幅、会话过期自动跳登录。
 
 ## 项目结构
 
 ```
 app/
   login/page.tsx          登录 / 注册
+  account/page.tsx        账号设置（改密 / 登录设备 / 注销）
   api/auth/               注册、登录、登出、当前用户
-  api/reports/            报告读取/新增/删除、单篇读取、批量导入
+  api/account/            改密、会话列表与撤销、注销账号
+  api/reports/            报告读取/新增/删除/PATCH（标签与复习状态）、单篇读取、批量导入
   api/profile/            个人设置读取/保存
-  api/ocr|topic|grade     手写识别、题目识别、批改（均需登录）
+  api/ocr|topic|grade     手写识别（支持多页）、题目识别、批改（均需登录）
+  api/explain             批注追问（按用户限流）
   api/ai/test             连接测试
   middleware.ts           未登录访问受保护页面时跳转 /login
-  grade/page.tsx          批改流程
-  report/[id]/page.tsx    报告页
-  mistakes/page.tsx       错题本
-  history/page.tsx        写作档案
+  grade/page.tsx          批改流程（多页照片、可取消）
+  report/[id]/page.tsx    报告页（追问 / 掌握 / 标签）
+  mistakes/page.tsx       错题本（掌握状态筛选）
+  history/page.tsx        写作档案（时间范围 / 分布 / 标签筛选）
   settings/page.tsx       AI 与个人设置
   manifest.ts             PWA manifest
 lib/
   server/store.ts         用户/会话/报告/资料的服务器端存储（文件型，原子写）
   server/auth.ts          会话 Cookie、当前用户
-  server/report.ts        报告落盘前的结构校验（版本、长度、条数、体积）
+  server/report.ts        报告落盘校验 + 列表投影（summary）
   server/validate.ts      请求参数校验
+  server/explain.ts       批注追问
+  server/rate-limit.ts    进程内限流
+  tags.ts                 标签清洗
+  toast.ts / command.ts   全局通知与命令面板数据
   user-data.ts            浏览器端数据层（调用上述接口，401 交给 SessionGuard）
-  client-api.ts           AI 接口调用封装（OCR / 题目 / 批改 / 测试）
+  client-api.ts           AI 接口调用封装（OCR / 题目 / 批改 / 追问 / 测试）
   storage.ts              仅本地：AI Key、简洁模式、草稿、备份解析
   mistakes.ts             错题汇总
   self-check.ts           提交前自查
-  image.ts                图片压缩与预处理
+  image.ts                图片压缩与预处理（单页/多页）
   utils.ts                格式化、统计、批注定位
-components/               页面组件（报告批注、自查、头部/底部、会话守卫等）
-  report/                 报告页专用（逐句批注、段落改写）
+components/               页面组件（报告批注、自查、头部/底部、Toast、对话框、命令面板、移动导航、会话守卫等）
+  report/                 报告页专用（逐句批注、段落改写、追问面板）
+scripts/                  构建清理、standalone 准备、密码重置
+tests/                    纯函数单元测试（node --test + tsx）
 deploy/                   服务器部署：Nginx、systemd、脚本、手册
 docs/                     代码审计报告与预览图
 ```
@@ -204,8 +220,22 @@ npm run build               # 生产构建（Next.js standalone）
 npm run start               # 生产模式启动（standalone）
 npm run typecheck           # TypeScript 检查
 npm run lint                # ESLint 检查
+npm run test:unit           # 纯函数单元测试（需要 Node ≥ 22）
+npm run reset-password      # 重置某个账号的密码（见下）
 npm run prepare:standalone  # 把静态资源复制进 .next/standalone
 ```
+
+### 忘记密码 / 重置密码
+
+本项目不依赖邮件服务，账号密码由服务器端脚本重置：
+
+```bash
+# 在项目根目录（或服务器 /srv/yanmo/app）执行
+YANMO_DATA_DIR=./data node scripts/reset-password.mjs someone@example.com
+YANMO_DATA_DIR=./data node scripts/reset-password.mjs someone@example.com 'NewPass123'
+```
+
+不传新密码时会生成一个随机密码并打印。重置后该账号的所有登录会话会失效，需要用新密码重新登录。登录页的「忘记密码」也会提示这一做法。
 
 ## 常见问题
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { GradeResult, PublicUser, UserProfile } from "./types";
+import type { GradeResult, PublicUser, ReportPatch, ReportSummary, UserProfile } from "./types";
 
 export class ApiError extends Error {
   code: string;
@@ -72,9 +72,25 @@ export async function logout(): Promise<void> {
   await request("/api/auth/logout", { method: "POST" });
 }
 
-export async function fetchReports(): Promise<GradeResult[]> {
-  const data = await request<{ reports: GradeResult[] }>("/api/reports");
+export type ReportView = "summary" | "full";
+
+/** 默认只取轻量投影；导出或需要正文时显式传 full。 */
+export async function fetchReports(view: ReportView = "summary"): Promise<ReportSummary[]> {
+  const data = await request<{ reports: ReportSummary[] }>(`/api/reports?view=${view}`);
   return data.reports ?? [];
+}
+
+export async function fetchReportsFull(): Promise<GradeResult[]> {
+  const data = await request<{ reports: GradeResult[] }>("/api/reports?view=full");
+  return data.reports ?? [];
+}
+
+export async function patchReport(id: string, patch: ReportPatch): Promise<ReportSummary> {
+  const data = await request<{ report: ReportSummary }>(
+    `/api/reports/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
+  return data.report;
 }
 
 export async function fetchReport(id: string): Promise<GradeResult | null> {
@@ -117,4 +133,43 @@ export async function fetchProfile(): Promise<UserProfile | null> {
 
 export async function saveProfileToServer(profile: UserProfile): Promise<void> {
   await request("/api/profile", { method: "PUT", body: JSON.stringify({ profile }) });
+}
+
+// ---- 账号安全 ----
+export interface SessionInfo {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  lastSeenAt: string | null;
+  userAgent: string | null;
+  current: boolean;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<number> {
+  const data = await request<{ revoked: number }>("/api/account/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  return data.revoked ?? 0;
+}
+
+export async function fetchSessions(): Promise<SessionInfo[]> {
+  const data = await request<{ sessions: SessionInfo[] }>("/api/account/sessions");
+  return data.sessions ?? [];
+}
+
+export async function revokeSessionById(id: string): Promise<void> {
+  await request(`/api/account/sessions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function revokeOtherSessions(): Promise<number> {
+  const data = await request<{ revoked: number }>("/api/account/sessions?all=1", { method: "DELETE" });
+  return data.revoked ?? 0;
+}
+
+export async function deleteAccount(password: string, confirmEmail: string): Promise<void> {
+  await request("/api/account", {
+    method: "DELETE",
+    body: JSON.stringify({ password, confirmEmail })
+  });
 }

@@ -9,10 +9,10 @@ export const maxDuration = 120;
 export async function POST(request: Request) {
   try {
     await requireUser(request);
-    const ai = requireAi(request);
     const body = await readJsonBody(request);
-    const { image } = parseOcrBody(body);
-    const result = await ocrEssay(ai, image);
+    const { images } = parseOcrBody(body);
+    const ai = requireAi(request);
+    const result = await ocrEssay(ai, images, request.signal);
     return Response.json(result);
   } catch (error) {
     return errorResponse(error);

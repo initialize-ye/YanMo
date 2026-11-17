@@ -7,12 +7,12 @@ import {
   ArrowUpRight,
   BarChart3,
   BookOpen,
-  Check,
   ChevronRight,
   Download,
   Info,
   PenLine,
   Search,
+  Tag,
   Upload,
   X
 } from "lucide-react";
@@ -21,13 +21,16 @@ import { SiteFooter } from "@/components/site-footer";
 import { CATEGORY_LABELS, examLabel, kindLabel, MAX_REPORTS } from "@/lib/constants";
 import { parseImportFile, type ParsedImport } from "@/lib/storage";
 import {
+  ApiError,
   fetchReports,
   fetchProfile,
+  fetchReportsFull,
   importReports,
   saveProfileToServer
 } from "@/lib/user-data";
 import { averagePercent, cn, formatDate, formatScore, scorePercent } from "@/lib/utils";
-import type { ErrorCategory, GradeResult } from "@/lib/types";
+import { toast } from "@/lib/toast";
+import type { ErrorCategory, ReportSummary } from "@/lib/types";
 
 interface TrendPoint {
   id: string;
@@ -38,22 +41,29 @@ interface TrendPoint {
 }
 
 export default function HistoryPage() {
-  const [reports, setReports] = useState<GradeResult[]>([]);
+  const [reports, setReports] = useState<ReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<ParsedImport | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importNote, setImportNote] = useState<string | null>(null);
   const [withProfile, setWithProfile] = useState(true);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"time" | "score">("time");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [range, setRange] = useState<"7d" | "30d" | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
 
   const refreshReports = useCallback(async () => {
     try {
       setReports(await fetchReports());
-    } catch {
-      // 读取失败时保留现有列表，避免把页面清空
+    } catch (error) {
+      // 读取失败时保留现有列表，避免把页面清空，并给出可重试的入口。
+      if (!(error instanceof ApiError && error.status === 401)) {
+        toast.error("读取写作档案失败，显示的是上次的数据。", {
+          label: "重试",
+          onClick: () => void refreshReports()
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -63,6 +73,22 @@ export default function HistoryPage() {
     void refreshReports();
     document.title = "写作档案 · 研墨 AI";
   }, [refreshReports]);
+
+  // 命令面板通过 /history?export=1 / ?import=1 触发动作，处理完清掉查询参数。
+  const autoActionRef = useRef(false);
+  useEffect(() => {
+    if (autoActionRef.current || loading) return;
+    autoActionRef.current = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("export") === "1") {
+      void exportArchive();
+      window.history.replaceState(null, "", "/history");
+    } else if (params.get("import") === "1") {
+      pickFile();
+      window.history.replaceState(null, "", "/history");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   useEffect(() => {
     if (loading || restoredRef.current) return;
@@ -93,26 +119,30 @@ export default function HistoryPage() {
   };
 
   const exportArchive = async () => {
-    const profile = (await fetchProfile()) ?? undefined;
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      profile,
-      reports
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `yanmo-archive-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setImportError(null);
-    setImportNote(
-      reports.length
-        ? `已导出 ${reports.length} 篇报告和个人设置，不包含 API Key。`
-        : "已导出个人设置（当前没有报告），不包含 API Key。"
-    );
-    window.setTimeout(() => setImportNote(null), 4000);
+    try {
+      const [profile, fullReports] = await Promise.all([fetchProfile(), fetchReportsFull()]);
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        profile: profile ?? undefined,
+        reports: fullReports
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8"
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `yanmo-archive-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        fullReports.length
+          ? `已导出 ${fullReports.length} 篇报告和个人设置，不包含 API Key。`
+          : "已导出个人设置（当前没有报告），不包含 API Key。"
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试。");
+    }
   };
 
   const pickFile = () => {
@@ -173,11 +203,9 @@ export default function HistoryPage() {
       if (invalid > 0) notes.push(`${invalid} 条记录格式无效，已忽略`);
       if (dropped > 0) notes.push(`${dropped} 篇导入记录超出 ${MAX_REPORTS} 篇上限，未写入`);
       if (droppedExisting > 0) notes.push(`最早的 ${droppedExisting} 篇记录被挤出上限`);
-      setImportNote(`${notes.join("；")}。`);
+      toast.success(`${notes.join("；")}。`);
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "导入失败，请稍后重试。");
-    } finally {
-      window.setTimeout(() => setImportNote(null), 6000);
     }
   };
 
@@ -193,24 +221,43 @@ export default function HistoryPage() {
       .sort((a, b) => b.count - a.count);
   }, [reports]);
 
-  const average = averagePercent(reports);
-  const best = reports.length ? Math.max(...reports.map(scorePercent)) : 0;
   const totalAnnotations = reports.reduce((sum, report) => sum + report.annotations.length, 0);
 
+  const allTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    reports.forEach((report) => {
+      (report.tags ?? []).forEach((tag) => {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      });
+    });
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [reports]);
+
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredReports = normalizedQuery
-    ? reports.filter((report) =>
-        [
-          report.meta.topicTitle,
-          examLabel(report.meta.exam),
-          kindLabel(report.meta.kind),
-          report.score.band
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery)
-      )
-    : reports;
+  const filteredReports = reports.filter((report) => {
+    if (activeTags.length && !activeTags.every((tag) => (report.tags ?? []).includes(tag))) {
+      return false;
+    }
+    if (!normalizedQuery) return true;
+    return [
+      report.meta.topicTitle,
+      examLabel(report.meta.exam),
+      kindLabel(report.meta.kind),
+      report.score.band,
+      ...(report.tags ?? [])
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedQuery);
+  });
+
+  const toggleTag = (tag: string) => {
+    setActiveTags((current) =>
+      current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]
+    );
+  };
 
   const displayReports =
     sortBy === "score"
@@ -220,6 +267,66 @@ export default function HistoryPage() {
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       : filteredReports;
+
+  // ---- 时间范围与进阶统计（趋势与指标都跟随范围）----
+  const rangedReports = useMemo(() => {
+    if (range === "all") return reports;
+    const days = range === "7d" ? 7 : 30;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return reports.filter((report) => new Date(report.createdAt).getTime() >= cutoff);
+  }, [reports, range]);
+
+  const rangedAverage = averagePercent(rangedReports);
+  const rangedBest = rangedReports.length ? Math.max(...rangedReports.map(scorePercent)) : 0;
+
+  const targetRate = rangedReports.length
+    ? Math.round(
+        (rangedReports.filter((report) => report.score.total >= report.meta.targetScore).length /
+          rangedReports.length) *
+          100
+      )
+    : 0;
+
+  const reviewedRate = rangedReports.length
+    ? Math.round(
+        (rangedReports.filter((report) => report.review?.reviewedAt).length / rangedReports.length) *
+          100
+      )
+    : 0;
+
+  // 连续批改天数：从今天（或昨天）往前数，只要当天有记录就算一天。
+  const streak = useMemo(() => {
+    if (!reports.length) return 0;
+    const dayKeys = new Set(
+      reports.map((report) => new Date(report.createdAt).toDateString())
+    );
+    let count = 0;
+    const cursor = new Date();
+    // 今天还没写不算断，从昨天开始算到第一处有记录为止。
+    if (!dayKeys.has(cursor.toDateString())) cursor.setDate(cursor.getDate() - 1);
+    while (dayKeys.has(cursor.toDateString())) {
+      count += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [reports]);
+
+  const distribution = useMemo(() => {
+    const buckets = [
+      { label: "≥90%", min: 90, max: 101 },
+      { label: "75–89%", min: 75, max: 90 },
+      { label: "62–74%", min: 62, max: 75 },
+      { label: "45–61%", min: 45, max: 62 },
+      { label: "<45%", min: 0, max: 45 }
+    ];
+    return buckets.map((bucket) => ({
+      label: bucket.label,
+      count: rangedReports.filter((report) => {
+        const percent = scorePercent(report);
+        return percent >= bucket.min && percent < bucket.max;
+      }).length
+    }));
+  }, [rangedReports]);
 
   return (
     <>
@@ -289,13 +396,6 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {importNote && (
-          <div className="mt-5 flex items-center gap-2 border border-jade/25 bg-[#e8f0fe] px-4 py-3 text-[14px] text-ink-soft">
-            <Check size={15} className="shrink-0 text-jade" />
-            {importNote}
-          </div>
-        )}
-
         {preview && (
           <div className="mt-5 border border-line bg-white p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -358,9 +458,11 @@ export default function HistoryPage() {
             <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-2.5 border-y border-line py-3.5 text-[13.5px] sm:gap-x-9">
               {[
                 ["累计批改", `${reports.length} 篇`],
-                ["平均得分率", `${average}%`],
-                ["最高得分率", `${best}%`],
-                ["批注总数", `${totalAnnotations} 处`],
+                ["平均得分率", `${rangedAverage}%`],
+                ["最高得分率", `${rangedBest}%`],
+                ["目标达成率", `${targetRate}%`],
+                ["已复习", `${reviewedRate}%`],
+                ["连续批改", `${streak} 天`],
                 ["最常出现", issues[0] ? CATEGORY_LABELS[issues[0].category] : "暂无"]
               ].map(([label, value]) => (
                 <span key={label} className="inline-flex items-baseline gap-1.5">
@@ -368,8 +470,27 @@ export default function HistoryPage() {
                   <span className="num text-[15px] font-medium text-ink">{value}</span>
                 </span>
               ))}
-              <span className="ml-auto hidden text-[12.5px] text-ink-mute sm:inline">
-                账号最多保存 {MAX_REPORTS} 篇
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-line bg-paper-light/60 p-0.5">
+                {([
+                  { value: "7d", label: "近 7 天" },
+                  { value: "30d", label: "近 30 天" },
+                  { value: "all", label: "全部" }
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setRange(option.value)}
+                    aria-pressed={range === option.value}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[12.5px] font-medium transition-colors",
+                      range === option.value
+                        ? "bg-white text-ink shadow-sm"
+                        : "text-ink-mute hover:text-ink"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </span>
             </div>
 
@@ -433,6 +554,41 @@ export default function HistoryPage() {
                 </div>
               </div>
 
+              {allTags.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line/70 pt-3">
+                  <Tag size={12} className="text-ink-mute" />
+                  {allTags.map((item) => {
+                    const active = activeTags.includes(item.tag);
+                    return (
+                      <button
+                        key={item.tag}
+                        type="button"
+                        onClick={() => toggleTag(item.tag)}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-[12.5px] transition-colors",
+                          active
+                            ? "border-jade bg-[#e8f0fe] text-jade"
+                            : "border-line bg-white text-ink-mute hover:border-jade/40 hover:text-jade"
+                        )}
+                      >
+                        {item.tag}
+                        <span className="ml-1 text-[11px] opacity-70">{item.count}</span>
+                      </button>
+                    );
+                  })}
+                  {activeTags.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTags([])}
+                      className="text-[12.5px] font-medium text-ink-mute hover:text-jade"
+                    >
+                      清除标签
+                    </button>
+                  )}
+                </div>
+              )}
+
               {filteredReports.length === 0 ? (
                 <div className="py-12 text-center">
                   <p className="text-[15px] font-medium text-ink">没有匹配的记录</p>
@@ -467,6 +623,17 @@ export default function HistoryPage() {
                           <span>{kindLabel(report.meta.kind)}</span>
                           <span className="text-ink-mute/40">/</span>
                           <span>{report.annotations.length} 处批注</span>
+                          {(report.tags ?? []).map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full border border-line bg-white px-1.5 py-0.5 text-[11.5px] text-ink-mute"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {report.review?.reviewedAt && (
+                            <span className="text-jade">· 已复习</span>
+                          )}
                           <span className="sm:hidden">· {formatDate(report.createdAt)}</span>
                         </p>
                       </div>
@@ -502,14 +669,18 @@ export default function HistoryPage() {
                     <p className="eyebrow">
                       <BarChart3 size={12} /> 得分率趋势
                     </p>
-                    <h2 className="mt-2 text-[17px] font-medium text-ink">最近 {Math.min(reports.length, 12)} 篇</h2>
+                    <h2 className="mt-2 text-[17px] font-medium text-ink">
+                      最近 {Math.min(rangedReports.length, 12)} 篇
+                    </h2>
                   </div>
                   <span className="text-[13px] text-ink-mute">
-                    首篇 {formatDate(reports[reports.length - 1].createdAt)} · 最近 {formatDate(reports[0].createdAt)}
+                    {rangedReports.length
+                      ? `首篇 ${formatDate(rangedReports[rangedReports.length - 1].createdAt)} · 最近 ${formatDate(rangedReports[0].createdAt)}`
+                      : "该范围内暂无记录"}
                   </span>
                 </div>
                 <TrendChart
-                  points={reports
+                  points={rangedReports
                     .slice(0, 12)
                     .reverse()
                     .map((report) => ({
@@ -571,6 +742,34 @@ export default function HistoryPage() {
                 )}
               </section>
             </div>
+
+                <section className="mt-4 rounded-2xl border border-line bg-white p-5 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <p className="eyebrow">
+                      <BarChart3 size={12} /> 得分分布
+                    </p>
+                    <span className="text-[13px] text-ink-mute">共 {rangedReports.length} 篇</span>
+                  </div>
+                  <div className="mt-4 flex h-28 items-end gap-2">
+                    {distribution.map((bucket) => {
+                      const maxCount = Math.max(1, ...distribution.map((item) => item.count));
+                      const height = Math.round((bucket.count / maxCount) * 100);
+                      return (
+                        <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
+                          <span className="num text-[12px] text-ink-mute">{bucket.count}</span>
+                          <span
+                            className={cn(
+                              "w-full rounded-t",
+                              bucket.count ? "bg-jade/20" : "bg-paper-deep"
+                            )}
+                            style={{ height: `${Math.max(4, height)}%` }}
+                          />
+                          <span className="text-[11px] text-ink-mute">{bucket.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
             </section>
 
