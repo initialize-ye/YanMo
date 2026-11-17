@@ -665,6 +665,18 @@ AI_MODEL=qwen-vl-max-latest`}
                     {process.env.NEXT_PUBLIC_APP_VERSION
                       ? `v${process.env.NEXT_PUBLIC_APP_VERSION}`
                       : "—"}
+                    {process.env.NEXT_PUBLIC_BUILD_COMMIT &&
+                      process.env.NEXT_PUBLIC_BUILD_COMMIT !== "unknown" && (
+                        <span className="ml-1 text-ink-mute">
+                          · {process.env.NEXT_PUBLIC_BUILD_COMMIT.slice(0, 7)}
+                        </span>
+                      )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[13.5px] text-ink-mute">构建时间</span>
+                  <span className="font-mono text-[12.5px] text-ink-soft">
+                    {formatBuildTime(process.env.NEXT_PUBLIC_BUILD_TIME)}
                   </span>
                 </div>
               </div>
@@ -710,6 +722,17 @@ AI_MODEL=qwen-vl-max-latest`}
       />
     </>
   );
+}
+
+/** 构建时间为 ISO 字符串，展示成「2026-11-17 21:31」这类本地短格式。 */
+function formatBuildTime(value: string | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
 }
 
 function SectionHeading({ index, title, desc }: { index: string; title: string; desc: string }) {

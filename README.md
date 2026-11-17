@@ -172,6 +172,7 @@ app/
   api/ocr|topic|grade     手写识别（支持多页）、题目识别、批改（均需登录）
   api/explain             批注追问（按用户限流）
   api/ai/test             连接测试
+  api/version             版本与构建标识（version / commit / builtAt）
   middleware.ts           未登录访问受保护页面时跳转 /login
   grade/page.tsx          批改流程（多页照片、可取消）
   report/[id]/page.tsx    报告页（追问 / 掌握 / 标签）
@@ -224,6 +225,19 @@ npm run test:unit           # 纯函数单元测试（需要 Node ≥ 22）
 npm run reset-password      # 重置某个账号的密码（见下）
 npm run prepare:standalone  # 把静态资源复制进 .next/standalone
 ```
+
+### 确认线上是否为最新代码
+
+构建时会把 commit 与构建时间注入产物，可用一个接口核对：
+
+```bash
+curl https://你的域名/api/version
+# {"name":"yanmo-ai","version":"0.3.0","commit":"66d3b24","builtAt":"...","env":"production",...}
+git rev-parse --short HEAD     # 与返回的 commit 一致，即为最新代码构建
+```
+
+`commit` 可在构建时用 `BUILD_COMMIT` 环境变量覆盖，`builtAt` 用 `BUILD_TIME` 覆盖（CI 场景）。
+设置页底部也展示版本、commit 与构建时间。
 
 ### 忘记密码 / 重置密码
 
