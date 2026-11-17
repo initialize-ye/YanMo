@@ -118,11 +118,9 @@ sudo nginx -t && sudo systemctl reload nginx
 
 1. CI 在推 `v*` 标签时生成 `latest.json` 并随 Release 上传（见 `.github/workflows/windows-exe.yml`）。
 2. 服务器定时把最新 Release 的 `latest.json` 和 `*.exe` 拉到 `/srv/yanmo/public/`：
+   > 仓库设为 **公开** 时，下面的脚本用匿名 GitHub API + curl 即可，**无需任何令牌**。
    ```bash
-   # 服务器安装 gh 并登录（或使用带 repo 权限的 PAT）
-   sudo apt -y install gh
-   gh auth login
-   # 安装同步脚本 + 定时任务
+   sudo apt -y install jq     # 已由 bootstrap 安装
    sudo cp /srv/yanmo/app/scripts/pull-release.sh /usr/local/bin/yanmo-pull-release
    sudo chmod +x /usr/local/bin/yanmo-pull-release
    sudo -u yanmo /usr/local/bin/yanmo-pull-release   # 先手动跑一次
