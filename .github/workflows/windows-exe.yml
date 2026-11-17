@@ -57,10 +57,13 @@ jobs:
           $base = "${{ vars.YANMO_PUBLIC_URL }}"
           if ([string]::IsNullOrWhiteSpace($base)) {
             $base = "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+            $url = "$($base.TrimEnd('/'))/YanMo-$version-win64.exe"
+          } else {
+            $url = "$($base.TrimEnd('/'))/downloads/YanMo-$version-win64.exe"
           }
           $manifest = [ordered]@{
             version     = $version
-            url         = "$($base.TrimEnd('/'))/YanMo-$version-win64.exe"
+            url         = $url
             notes       = "见 Release ${{ github.ref_name }}"
             publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           }
