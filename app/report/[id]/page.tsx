@@ -45,7 +45,9 @@ import {
   formatDateTime,
   formatScore,
   isLanguageError,
-  sortAnnotationsByPosition
+  placeAnnotations,
+  sortAnnotationsByPosition,
+  splitEssayParagraphs
 } from "@/lib/utils";
 import { copyText } from "@/lib/clipboard";
 import type { ErrorCategory, GradeResult } from "@/lib/types";
@@ -64,6 +66,7 @@ export default function ReportPage() {
   const [noteCopyId, setNoteCopyId] = useState<string | null>(null);
   const [collapseNotes, setCollapseNotes] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [showModel, setShowModel] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("language");
@@ -178,7 +181,7 @@ export default function ReportPage() {
             <span className="seal mx-auto h-14 w-14 text-[20px]">失</span>
             <h1 className="display mt-7 text-3xl">没有找到这份报告</h1>
             <p className="mt-3 text-[15px] leading-6 text-ink-mute">
-              报告默认保存在当前浏览器中。清除浏览器数据或更换设备后可能无法读取。
+              报告按账号保存在服务器。这份报告可能已被删除，或不属于当前登录的账号。
             </p>
             <div className="mt-7 flex items-center justify-center gap-3">
               <Link href="/history" className="btn btn-primary">
@@ -238,6 +241,10 @@ export default function ReportPage() {
         : filter === "other"
           ? otherAnnotations
           : sortedAnnotations.filter((item) => item.category === filter);
+
+  // 与正文高亮共用同一套定位，才能知道哪些批注在原文里找不到对应片段。
+  const { unplaced } = placeAnnotations(splitEssayParagraphs(report.text), filteredAnnotations);
+  const unplacedIds = new Set(unplaced.map((item) => item.id));
 
   const selectNote = (noteId: string) => {
     setActiveNote(noteId);
@@ -389,9 +396,14 @@ export default function ReportPage() {
   };
 
   const handleDelete = async () => {
+    setDeleteError(null);
     try {
       await deleteReportOnServer(report.id);
-    } catch {}
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "删除失败，请稍后重试。");
+      setConfirmDelete(false);
+      return;
+    }
     try {
       sessionStorage.removeItem(`yanmo.practice.${report.id}`);
     } catch {}
@@ -418,7 +430,7 @@ export default function ReportPage() {
               <span>{stats.words} 词</span>
               <span className="text-ink-mute/50">·</span>
               <span>{stats.paragraphs} 段</span>
-              <span className="text-jade">已存入本机</span>
+              <span className="text-jade">已保存到账号</span>
             </div>
             <h1 className="display mt-2 text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight">
               {meta.topicTitle}
@@ -493,6 +505,15 @@ export default function ReportPage() {
             )}
           </div>
         </div>
+
+        {deleteError && (
+          <p
+            role="alert"
+            className="print-hide mt-4 border border-cinnabar/30 bg-cinnabar/[0.05] px-3.5 py-2.5 text-[13.5px] text-cinnabar"
+          >
+            {deleteError}
+          </p>
+        )}
 
         <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-white shadow-paper">
           <div className="grid md:grid-cols-[248px_1fr]">
@@ -810,7 +831,7 @@ export default function ReportPage() {
                     <div>
                       <p className="text-[14px] font-semibold tracking-[0.16em] text-ink">学生原文</p>
                       <p className="mt-0.5 text-[11.5px] tracking-[0.08em] text-ink-mute">
-                        ESSAY · {filteredAnnotations.length} 处标记
+                        ESSAY · {filteredAnnotations.length - unplaced.length} 处标记
                       </p>
                     </div>
                   </div>
@@ -863,6 +884,11 @@ export default function ReportPage() {
                   {filteredAnnotations.length} 处
                 </span>
               </div>
+              {unplaced.length > 0 && (
+                <p className="rounded-lg border border-gold/40 bg-gold/[0.05] px-3 py-2 text-[13px] leading-6 text-ink-soft print-hide">
+                  {unplaced.length} 处批注无法在原文中定位（AI 可能改写了引文，或原文含特殊字符），已列在下方批注卡片里。
+                </p>
+              )}
               {filteredAnnotations.length ? (
                 filteredAnnotations.map((annotation, index) => (
                   <article
@@ -905,6 +931,14 @@ export default function ReportPage() {
                         />
                         {SEVERITY_LABELS[annotation.severity]}
                       </span>
+                      {unplacedIds.has(annotation.id) && (
+                        <span
+                          className="chip !py-0.5 !text-[13px] border-gold/40 bg-gold/[0.06] !text-gold"
+                          title="AI 给出的引文在原文中找不到对应片段"
+                        >
+                          原文未定位
+                        </span>
+                      )}
                       <div className="ml-auto flex items-center gap-3 print-hide">
                         <button
                           type="button"

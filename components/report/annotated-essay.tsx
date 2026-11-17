@@ -2,7 +2,12 @@
 
 import { Fragment } from "react";
 import type { Annotation } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  placeAnnotations,
+  splitEssayParagraphs,
+  type AnnotationPlacement
+} from "@/lib/utils";
 
 interface Props {
   text: string;
@@ -13,48 +18,6 @@ interface Props {
   className?: string;
 }
 
-interface Placement {
-  start: number;
-  end: number;
-  annotation: Annotation;
-  number: number;
-}
-
-/**
- * 把批注分配回原文。
- *
- * 顺序扫描段落，每条批注只占用一处匹配位置；同一句被重复标注时，
- * 会依次匹配到段内的下一个出现位置，而不是全部挤在第一次出现的地方。
- */
-function placeAnnotations(paragraphs: string[], annotations: Annotation[]): Placement[][] {
-  const placements: Placement[][] = paragraphs.map(() => []);
-  const placed = new Set<string>();
-
-  paragraphs.forEach((paragraph, paragraphIndex) => {
-    let cursor = 0;
-    annotations.forEach((annotation, index) => {
-      if (placed.has(annotation.id)) return;
-      const quote = annotation.quote.replace(/\s+/g, " ").trim();
-      if (!quote) return;
-
-      const start = paragraph.indexOf(quote, cursor);
-      if (start === -1) return;
-
-      let end = start + quote.length;
-      const nextCharacter = paragraph.slice(end, end + 1);
-      if (/[.,;:!?]/.test(nextCharacter) && !/[.,;:!?]$/.test(quote)) {
-        end += 1;
-      }
-
-      placements[paragraphIndex].push({ start, end, annotation, number: index + 1 });
-      placed.add(annotation.id);
-      cursor = end;
-    });
-  });
-
-  return placements;
-}
-
 export function AnnotatedEssay({
   text,
   annotations,
@@ -63,11 +26,8 @@ export function AnnotatedEssay({
   showCorrections = false,
   className
 }: Props) {
-  const paragraphs = text
-    .split(/\n\s*\n/)
-    .map((item) => item.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-  const placements = placeAnnotations(paragraphs, annotations);
+  const paragraphs = splitEssayParagraphs(text);
+  const { byParagraph } = placeAnnotations(paragraphs, annotations);
 
   return (
     <div className={cn("essay-body space-y-5", className)}>
@@ -75,7 +35,7 @@ export function AnnotatedEssay({
         <p key={paragraphIndex}>
           {renderParagraph(
             paragraph,
-            placements[paragraphIndex],
+            byParagraph[paragraphIndex],
             activeId,
             onSelect,
             showCorrections
@@ -88,7 +48,7 @@ export function AnnotatedEssay({
 
 function renderParagraph(
   paragraph: string,
-  matches: Placement[],
+  matches: AnnotationPlacement[],
   activeId: string | null,
   onSelect: (id: string) => void,
   showCorrections: boolean

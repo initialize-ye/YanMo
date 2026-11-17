@@ -1,40 +1,51 @@
-import { maxScoreFor } from "../constants";
-import type { EssayKind, EssayMeta, ExamId, GradeRequestBody, HistoryInsight, LevelId } from "../types";
+import {
+  CATEGORY_LABELS,
+  EXAMS as EXAM_OPTIONS,
+  KINDS as KIND_OPTIONS,
+  LEVELS as LEVEL_OPTIONS,
+  maxScoreFor
+} from "../constants";
+import type {
+  ErrorCategory,
+  EssayKind,
+  EssayMeta,
+  ExamId,
+  GradeRequestBody,
+  HistoryInsight,
+  LevelId
+} from "../types";
 import { AppError } from "./errors";
 
-const EXAMS: ExamId[] = ["english1", "english2"];
-const KINDS: EssayKind[] = ["letter", "essay"];
-const LEVELS: LevelId[] = ["foundation", "steady", "advanced"];
-const CATEGORIES = ["grammar", "vocab", "spelling", "cohesion", "logic", "register", "task"] as const;
+// 取值集合全部从 lib/constants 派生，避免两处手写枚举漂移。
+const EXAM_IDS = EXAM_OPTIONS.map((item) => item.id);
+const KIND_IDS = KIND_OPTIONS.map((item) => item.id);
+const LEVEL_IDS = LEVEL_OPTIONS.map((item) => item.id);
+const CATEGORY_IDS = Object.keys(CATEGORY_LABELS) as ErrorCategory[];
 
 function bad(message: string): never {
   throw new AppError(400, "BAD_REQUEST", message);
 }
 
-export function parseOcrBody(body: unknown): { image: string } {
+/** 作文图与题目图走同一套校验：data URL 类型 + 体积上限。 */
+function parseImageBody(body: unknown, label: string): { image: string } {
   if (!body || typeof body !== "object") bad("请求格式不正确。");
   const image = (body as Record<string, unknown>).image;
-  if (typeof image !== "string") bad("缺少作文图片。");
+  if (typeof image !== "string") bad(`缺少${label}。`);
   if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(image)) {
-    bad("图片格式不支持，请上传 JPG、PNG 或 WebP。");
+    bad(`${label}格式不支持，请上传 JPG、PNG 或 WebP。`);
   }
   if (image.length > 9_000_000) {
-    bad("图片体积过大，请压缩后再试。");
+    bad(`${label}体积过大，请压缩后再试。`);
   }
   return { image };
 }
 
+export function parseOcrBody(body: unknown): { image: string } {
+  return parseImageBody(body, "作文图片");
+}
+
 export function parseTopicBody(body: unknown): { image: string } {
-  if (!body || typeof body !== "object") bad("请求格式不正确。");
-  const image = (body as Record<string, unknown>).image;
-  if (typeof image !== "string") bad("缺少题目图片。");
-  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(image)) {
-    bad("题目图片格式不支持，请上传 JPG、PNG 或 WebP。");
-  }
-  if (image.length > 9_000_000) {
-    bad("题目图片体积过大，请压缩后再试。");
-  }
-  return { image };
+  return parseImageBody(body, "题目图片");
 }
 
 function parseHistory(value: unknown): HistoryInsight | undefined {
@@ -58,15 +69,16 @@ function parseHistory(value: unknown): HistoryInsight | undefined {
   const topIssues = Array.isArray(record.topIssues)
     ? record.topIssues
         .slice(0, 4)
-        .map((item) => {
+        .map((item): { category: ErrorCategory; count: number } | null => {
           if (!item || typeof item !== "object") return null;
           const entry = item as Record<string, unknown>;
-          if (!CATEGORIES.includes(entry.category as (typeof CATEGORIES)[number])) return null;
+          const category = entry.category as ErrorCategory;
+          if (!CATEGORY_IDS.includes(category)) return null;
           const count = Number(entry.count);
           if (!Number.isFinite(count) || count <= 0) return null;
-          return { category: entry.category as (typeof CATEGORIES)[number], count: Math.round(count) };
+          return { category, count: Math.round(count) };
         })
-        .filter((item): item is { category: (typeof CATEGORIES)[number]; count: number } => Boolean(item))
+        .filter((item): item is { category: ErrorCategory; count: number } => Boolean(item))
     : [];
   return { total: Math.round(total), recentScores, topIssues };
 }
@@ -80,10 +92,10 @@ export function parseGradeBody(body: unknown): GradeRequestBody {
 
   const metaRaw =
     record.meta && typeof record.meta === "object" ? (record.meta as Record<string, unknown>) : {};
-  const exam = EXAMS.includes(metaRaw.exam as ExamId) ? (metaRaw.exam as ExamId) : "english1";
-  const kind = KINDS.includes(metaRaw.kind as EssayKind) ? (metaRaw.kind as EssayKind) : "essay";
+  const exam = EXAM_IDS.includes(metaRaw.exam as ExamId) ? (metaRaw.exam as ExamId) : "english1";
+  const kind = KIND_IDS.includes(metaRaw.kind as EssayKind) ? (metaRaw.kind as EssayKind) : "essay";
   const maxScore = maxScoreFor(exam, kind);
-  const level = LEVELS.includes(metaRaw.level as LevelId)
+  const level = LEVEL_IDS.includes(metaRaw.level as LevelId)
     ? (metaRaw.level as LevelId)
     : "steady";
 

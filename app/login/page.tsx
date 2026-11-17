@@ -12,7 +12,9 @@ type Mode = "login" | "register";
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/";
+  // 只接受站内相对路径，避免 /login?next=https://evil.com 这类开放重定向。
+  const nextParam = params.get("next") ?? "";
+  const next = /^\/(?!\/)/.test(nextParam) ? nextParam : "/";
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");

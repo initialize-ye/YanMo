@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DropGuard } from "@/components/drop-guard";
+import { SessionGuard } from "@/components/session-guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </a>
         {children}
         <DropGuard />
+        <SessionGuard />
       </body>
     </html>
   );

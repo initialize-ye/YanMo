@@ -12,6 +12,14 @@ export class AppError extends Error {
   }
 }
 
+export async function readJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json();
+  } catch {
+    throw new AppError(400, "BAD_REQUEST", "请求内容不是合法的 JSON。");
+  }
+}
+
 export function errorResponse(error: unknown): Response {
   if (error instanceof AppError) {
     if (error.status >= 400) {

@@ -30,7 +30,7 @@ RestartSec=3
 KillSignal=SIGTERM
 TimeoutStopSec=20
 
-# 运行数据（云备份密文等）
+# 运行数据（账号、会话、批改报告）
 ReadWritePaths=/srv/yanmo/data
 
 # ---- 加固 ----

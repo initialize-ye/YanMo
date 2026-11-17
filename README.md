@@ -2,7 +2,7 @@
 
 面向考研英语一 / 英语二的手写作文批改工具。
 
-上传手写作文照片，或直接粘贴文字稿，研墨会按考研写作的评分维度给出估分、逐句修改建议、段落改写、参考范文和下一轮练习。批改报告会进入本机写作档案，常见错误会汇总到错题本，可以按类型筛选并遮住答案重做。
+上传手写作文照片，或直接粘贴文字稿，研墨会按考研写作的评分维度给出估分、逐句修改建议、段落改写、参考范文和下一轮练习。批改报告会进入账号下的写作档案，常见错误会汇总到错题本，可以按类型筛选并遮住答案重做。
 
 > 评分仅用于训练参考，不能替代正式考试阅卷。
 
@@ -22,7 +22,7 @@
 - **逐句语言纠错**：优先、完整扫描语法、拼写、用词/搭配错误，按原文顺序编号。原文红色波浪线标出错误位置，可只看「语法 / 拼写 / 用词」，也可一键把正确表达插在原文中，或复制语言错误清单。
 - **简洁模式**：报告顶部一键切换，隐藏优点/问题分析、段落重写、参考范文和训练清单，只保留估分、语言错误与精简建议；开关状态会记住。
 - **段落改写与参考范文**：保留原意的段落改写 + 高分范文，并解释范文亮点，不鼓励整篇背诵。
-- **下一步练习**：结合个人水平、目标分和本机历史高频错误，生成 2–3 条建议与可执行的练习清单。
+- **下一步练习**：结合个人水平、目标分和账号下的历史高频错误，生成 2–3 条建议与可执行的练习清单。
 - **写作档案**：分数趋势、错误类型分布、按题目/试卷/题型搜索、逐篇回看；支持导入导出 JSON 备份。
 - **草稿自动保存**：批改台的作文内容、题目和设置会自动保存在本机，刷新或重新打开后可恢复。
 - **移动端导航**：手机上面板菜单可以直接进入批改台、错题本、写作档案和设置。
@@ -33,7 +33,7 @@
 
 ## 快速开始
 
-研墨现在是 **纯 Web 应用**：浏览器打开即可使用，报告按账号保存在服务器。
+研墨是带账号的 Web 应用：打开后先注册 / 登录，报告与个人设置按账号保存在服务器；未登录访问受保护页面会跳转到 `/login`。
 
 ### 部署 / 自建
 
@@ -110,16 +110,17 @@ AI_TEXT_MODEL=qwen-plus
 
 ### 关于接口安全
 
-- 浏览器配置会通过请求头把 Key 发送到本机 `/api/ocr`、`/api/topic`、`/api/grade`，再由服务端转发给服务商。
+- 浏览器配置会通过请求头把 Key 发送到 `/api/ocr`、`/api/topic`、`/api/grade`，再由服务端转发给服务商。
 - 服务端只接受 `https` 公网地址；`http` 仅允许 localhost，便于接入本地 Ollama 等兼容服务。
-- 本项目没有登录与权限系统，BYOK 设计面向个人本机使用。如果要公开部署，请只使用服务端 Key，并考虑给 API 增加鉴权、限流与域名白名单。
+- `/api/ocr`、`/api/topic`、`/api/grade`、`/api/ai/test` 都要求登录：使用服务端 `AI_API_KEY` 时，登录是防止额度被匿名消耗的应用层防线。
+- 公开部署时仍建议在 Nginx 层对 `/api/` 做限流与域名白名单，模板见 `deploy/nginx/yanmo.conf`。
 
 ## 写作档案备份
 
 在 `/history` 顶部可以：
 
 - **导出**：下载 JSON 备份，包含全部报告和个人设置，不包含 API Key。
-- **导入**：选择备份文件后先显示预览（可新增多少篇、跳过多少重复），确认后再合并。合并按报告 id 去重，本机已有记录不会被修改或删除。
+- **导入**：选择备份文件后先显示预览（可新增多少篇、跳过多少重复），确认后再合并。合并按报告 id 去重，账号下已有记录不会被修改或删除。
 
 ## 工作流程
 
@@ -155,52 +156,43 @@ AI_TEXT_MODEL=qwen-plus
 
 ```
 app/
-  api/ocr/route.ts        手写图片 → 文字
-  api/topic/route.ts      题目图片 → 题干 / 图画图表描述
-  api/grade/route.ts      文字 → 批改报告
-  api/ai/test/route.ts    测试 AI 连接
-  api/status/route.ts     查询服务端是否配置 AI
-  manifest.ts             PWA 安装清单
+  login/page.tsx          登录 / 注册
+  api/auth/               注册、登录、登出、当前用户
+  api/reports/            报告读取/新增/删除、单篇读取、批量导入
+  api/profile/            个人设置读取/保存
+  api/ocr|topic|grade     手写识别、题目识别、批改（均需登录）
+  api/ai/test             连接测试
+  middleware.ts           未登录访问受保护页面时跳转 /login
   grade/page.tsx          批改流程
   report/[id]/page.tsx    报告页
   mistakes/page.tsx       错题本
   history/page.tsx        写作档案
   settings/page.tsx       AI 与个人设置
-components/
-  report/                 原文批注、段落重写
-  self-check.tsx          提交前自查
-  site-header.tsx         ...
-electron/
-  main.cjs                桌面版主进程：启动本地服务、创建窗口
-build/
-  icon.ico                应用图标
-scripts/
-  prepare-standalone.mjs  复制静态资源到 standalone
-  after-pack.cjs          把服务端 node_modules 补进 Electron 包
-public/
-  icons/                  PWA 图标
-  sw.js                   Service Worker
-docs/
-  android.md              Android PWA / TWA 打包说明
-electron-builder.yml      Windows exe 打包配置
+  manifest.ts             PWA manifest
 lib/
-  server/                 仅服务端：提示词、AI 调用、校验
-  constants.ts            题型、分值、水平、真题训练题
-  mistakes.ts             汇总错题、统计重复错误
-  self-check.ts           词数、长句、拼写与重复用词检查
-  sample.ts               快速测试用样文
-  storage.ts              localStorage 档案与配置
-  image.ts                图片压缩
+  server/store.ts         用户/会话/报告/资料的服务器端存储（文件型，原子写）
+  server/auth.ts          会话 Cookie、当前用户
+  server/report.ts        报告落盘前的结构校验（版本、长度、条数、体积）
+  server/validate.ts      请求参数校验
+  user-data.ts            浏览器端数据层（调用上述接口，401 交给 SessionGuard）
+  client-api.ts           AI 接口调用封装（OCR / 题目 / 批改 / 测试）
+  storage.ts              仅本地：AI Key、简洁模式、草稿、备份解析
+  mistakes.ts             错题汇总
+  self-check.ts           提交前自查
+  image.ts                图片压缩与预处理
+  utils.ts                格式化、统计、批注定位
+components/               页面组件（报告批注、自查、头部/底部、会话守卫等）
+  report/                 报告页专用（逐句批注、段落改写）
+deploy/                   服务器部署：Nginx、systemd、脚本、手册
+docs/                     代码审计报告与预览图
 ```
 
 ## 数据与隐私
 
-- 报告、个人水平设置和 AI 配置默认保存在浏览器 localStorage，不会写入数据库。
-- Windows 桌面版使用 Electron 的持久化存储，数据位于 `%APPDATA%\YanMo`；PWA 和源码版使用浏览器 localStorage。
-- 图片只在识别时上传到你配置的 AI 服务；研墨不做对象存储，也不保留原图。
-- 报告最多保留 100 篇；可在写作档案页导入 / 导出 JSON 备份，或在设置页清除全部报告。
-- 云备份为可选功能：手动启用后报告以**密文**上传到自建服务器，服务器无法解密（见 `deploy/README.md`）。
-- PWA/浏览器版清除站点数据、更换浏览器或无痕模式会导致档案丢失；桌面版不要手动删除 `%APPDATA%\YanMo`。
+- 账号：邮箱 + 密码，密码以 scrypt 加盐哈希保存；会话为 HttpOnly Cookie。
+- 报告与个人设置按用户存储在服务器 `YANMO_DATA_DIR`（默认 `./data`），不同账号互相隔离。
+- AI 接口 Key 只保存在用户本机浏览器 localStorage，不上传服务器；作文图片仅在识别时发送到你配置的 AI 服务。
+- 每个账号最多保留 100 篇报告；可在写作档案页导入 / 导出 JSON 备份，或在设置页清除全部报告。
 
 ## 开发脚本
 
@@ -209,94 +201,40 @@ npm run dev                 # 开发服务器
 npm run dev:clean           # 先清理 .next 再启动开发服务器
 npm run clean               # 清理 .next 与 tsconfig.tsbuildinfo
 npm run build               # 生产构建（Next.js standalone）
-npm run start               # 生产模式启动（standalone，自动准备静态资源后运行）
+npm run start               # 生产模式启动（standalone）
 npm run typecheck           # TypeScript 检查
+npm run lint                # ESLint 检查
 npm run prepare:standalone  # 把静态资源复制进 .next/standalone
-npm run electron:dev        # 以 Electron 窗口运行已构建的应用
-npm run build:exe           # 构建 Windows 桌面版 exe
-npm run build:exe:dir       # 只生成未打包的 Electron 目录，便于调试
 ```
 
 ## 常见问题
 
 **双击启动脚本后窗口闪退、项目没起来**
-现在双击 `启动项目.cmd` 或 `启动项目.ps1` 都会保留窗口：出错时窗口会停住并显示原因，按回车才关闭。
-常见原因是脚本编码或执行策略问题，当前版本已修复：脚本保存为带 BOM 的 UTF-8，内部改用 `npm.cmd` 调用，并在外层捕获异常。
+`启动项目.cmd` / `启动项目.ps1` 出错时会停住并显示原因，按回车才关闭；请先安装 Node.js 20 LTS。
 
 **页面显示旧内容 / 开发时报 hydration 不一致**
-多为缓存导致。双击启动脚本在检测到生产构建残留时会自动清理 `.next`；也可手动清理后重启：
-```powershell
-npm run clean
-npm run dev
-```
-或在浏览器按 `Ctrl+Shift+R` 硬刷新、清除该站点数据后重试。桌面版更新后如遇旧界面，清理一次站点数据即可。
-
-**双击 .ps1 时提示「禁止运行脚本」**
-Windows 默认按「安全相关文件」打开 `.ps1`。请双击 `启动项目.cmd`，或在 PowerShell 中执行：
-```powershell
-PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1
-```
-
-**Node.js 版本过低或找不到 node**
-脚本会直接提示并停住。安装 Node.js 20 LTS 后重新双击即可。
-
-**端口 3000 被占用**
-说明已经有一个实例在运行，脚本会直接打开 `http://localhost:3000`。需要新开一个实例时使用：
-```powershell
-PowerShell -ExecutionPolicy Bypass -File .\启动项目.ps1 -Port 3001
-```
-
-**桌面版提示端口 38217 被占用**
-桌面版固定使用 `127.0.0.1:38217`。请先关闭已经运行的研墨窗口，或在任务管理器结束残留的 `YanMo.exe` 后重试。不要随意修改端口，否则 Electron 会把它当成新的站点，之前的本地数据不会自动出现。
-
-**桌面版数据在哪里**
-位于 `%APPDATA%\YanMo`。升级 exe 一般不会删除这里；卸载或手动清理该目录才会丢失报告和设置。
+多为缓存导致，`npm run clean && npm run dev`，或在浏览器按 `Ctrl+Shift+R` 硬刷新。
 
 **提示「还没有接入 AI」**
-到 `/settings` 填写 Key，或配置 `.env.local` 后重启。
+到 `/settings` 填写 Key，或配置服务端 `AI_API_KEY` 环境变量后重启。
 
-**401 / 403**
-Key 无效、过期，或没有该模型权限。
-
-**402 / 余额不足**
-DeepSeek 等服务商会用 402 表示账户余额或额度不足。到服务商控制台充值后重试。现在界面会直接显示“AI 账户余额不足”，不再只显示笼统的“服务暂时不可用”。
-
-**429 / 限流**
-请求过于频繁，等待几十秒后重试；也可能是账户额度已用完。
-
-**502 / 503 / 服务暂时不可用**
-上游服务临时故障或网络中断。项目会自动重试一次；仍失败时，界面会显示上游状态码和错误详情。DeepSeek 503 通常等待一段时间即可恢复。
-
-**桌面版日志在哪里**
-`%APPDATA%\YanMo\logs\server.log`。遇到启动或接口异常时，把这个文件尾部发来即可定位。
-
-**404 / 模型不存在**
-检查 Base URL 是否保留 `/v1`、`/v4` 等版本路径，以及模型名称是否拼写正确。
-
-**400，或提示不支持图片**
-当前模型不支持视觉输入。换一个视觉模型，或改用「文字稿」模式。
-
-**超时**
-默认超时 120 秒。可重试，或在设置中换响应更快的模型。
-
-**图片上传失败**
-确认是 JPG / PNG / WebP，且不超过 15 MB。HEIC 需要先在手机相册里转换格式。
-
-**批改结果格式错误**
-部分模型不擅长严格 JSON。项目会自动尝试关闭 `response_format` 重试；仍失败时，换用指令遵循更好的模型（如 Qwen / GPT-4o / Gemini）。
-
-**提示「AI 返回了空内容」或 `finish_reason=length`**
-常见于默认开启思考模式的模型（例如 DeepSeek Flash）。模型把输出预算花在了 `reasoning_content` 上，`content` 为空。
-官方 DeepSeek 接口会自动关闭思考模式；其他网关请关闭 thinking/reasoning，或换用非思考模型。
+**401 / 403**：Key 无效、过期或无该模型权限。
+**402 / 余额不足**：到服务商控制台充值后重试。
+**429 / 限流**：请求过于频繁或额度用完，稍候再试。
+**502 / 503**：上游临时故障，通常稍后恢复。
+**404 / 模型不存在**：检查 Base URL 的版本路径（`/v1` 等）与模型名。
+**400 / 不支持图片**：当前模型不支持视觉输入，换视觉模型或改用文字稿。
+**超时**：默认 120 秒，可重试或换更快的模型。
+**图片上传失败**：确认 JPG / PNG / WebP 且 < 15MB，HEIC 需先转格式。
+**批改结果格式错误**：换指令遵循更好的模型（Qwen / GPT-4o / Gemini）。
+**「AI 返回了空内容」**：多为思考模式模型耗尽输出预算，关闭 thinking 或换非思考模型。
 
 ## 部署提示
 
-- 生产环境请在服务端设置 `AI_API_KEY`，不要把 Key 暴露给浏览器。
-- `/api/ocr`、`/api/topic` 与 `/api/grade` 设置了 `maxDuration = 120`，部署平台的函数时长和请求体大小需要相应放宽（部分平台默认 4.5 MB）。
-- 用 Nginx 反代时请对 `/api/` 做限流，防止他人消耗服务端 Key（配置见 `deploy/nginx/yanmo.conf`）。
-- 完整自建服务器方案（Web 公网访问、服务端 Key、exe 更新镜像、报告云备份）见 **[deploy/README.md](deploy/README.md)**。
-- 桌面 exe 更新检查可脱离私有仓库：在 `package.json` 设置 `updateManifestUrl` 指向你的 `/updates/latest.json` 即可。
-- 报告云备份为端到端加密（PBKDF2 + AES-GCM），服务器只存密文；同步码丢失即无法恢复。
+- 生产环境可用服务端 `AI_API_KEY` 统一代理，或让用户自带 Key（存本机）。
+- `/api/ocr`、`/api/topic`、`/api/grade` 的 `maxDuration = 120`，请在反向代理放宽超时与请求体大小（照片 base64 约 12MB）。
+- Nginx 对 `/api/` 与 `/api/auth/*` 做限流，防刷与防爆破；模板见 `deploy/nginx/yanmo.conf`。
+- 完整自建方案（Ubuntu + Nginx + HTTPS + systemd + 账号数据存储）见 **[deploy/README.md](deploy/README.md)**。
 
 ## 技术栈
 

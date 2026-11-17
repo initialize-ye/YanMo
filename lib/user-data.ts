@@ -1,6 +1,6 @@
 "use client";
 
-import type { GradeResult, UserProfile } from "./types";
+import type { GradeResult, PublicUser, UserProfile } from "./types";
 
 export class ApiError extends Error {
   code: string;
@@ -29,19 +29,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
   if (!response.ok) {
-    throw new ApiError(
+    const error = new ApiError(
       payload?.error ?? `请求失败（${response.status}）`,
       payload?.code ?? "HTTP_ERROR",
       response.status
     );
+    // 会话过期统一交给 SessionGuard 处理：各页面不必各自判断 401。
+    if (error.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("yanmo:unauthorized"));
+    }
+    throw error;
   }
   return (payload ?? {}) as T;
-}
-
-export interface PublicUser {
-  id: string;
-  email: string;
-  createdAt: string;
 }
 
 export async function fetchMe(): Promise<PublicUser | null> {
@@ -79,8 +78,13 @@ export async function fetchReports(): Promise<GradeResult[]> {
 }
 
 export async function fetchReport(id: string): Promise<GradeResult | null> {
-  const reports = await fetchReports();
-  return reports.find((report) => report.id === id) ?? null;
+  try {
+    const data = await request<{ report: GradeResult }>(`/api/reports/${encodeURIComponent(id)}`);
+    return data.report ?? null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 export async function saveReportToServer(report: GradeResult): Promise<boolean> {
@@ -98,7 +102,7 @@ export async function clearReportsOnServer(): Promise<void> {
 
 export async function importReports(
   reports: GradeResult[]
-): Promise<{ added: number; dropped: number; droppedExisting: number }> {
+): Promise<{ added: number; dropped: number; droppedExisting: number; invalid: number }> {
   return request("/api/reports/import", { method: "POST", body: JSON.stringify({ reports }) });
 }
 

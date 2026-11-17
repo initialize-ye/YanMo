@@ -28,7 +28,7 @@ export default function ErrorPage({
           <h1 className="display mt-6 text-[28px]">页面出错了</h1>
           <p className="mt-3 text-[15px] leading-7 text-ink-mute">
             这通常是一次性的渲染错误。可以重试，或者回到写作档案继续使用。
-            本机报告一般不受影响。
+            账号里的报告不受影响。
           </p>
           {error.digest && (
             <p className="mt-3 font-mono text-[12px] text-ink-mute">错误编号：{error.digest}</p>

@@ -101,9 +101,6 @@ export function loadCompactMode(): boolean {
 
 export function saveCompactMode(value: boolean): void {
   writeJson(COMPACT_KEY, value);
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("yanmo:compact-changed"));
-  }
 }
 
 function isGradeResult(value: unknown): value is GradeResult {

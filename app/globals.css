@@ -12,15 +12,11 @@
   --paper-deep: #f1f3f4;
   --jade: #1a73e8;
   --jade-deep: #1765cc;
-  --jade-light: #e8f0fe;
   --cinnabar: #d93025;
-  --cinnabar-light: #fce8e6;
   --gold: #b06000;
   --line: #dadce0;
-  --line-soft: #e8eaed;
   --font-body: "Google Sans", "Roboto", "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
   --font-display: var(--font-body);
-  --font-kai: var(--font-body);
   --font-serif: var(--font-body);
 }
 
@@ -85,10 +81,6 @@ html {
 }
 
 /* 页面内锚点平滑滚动，并在跳转时避开吸顶导航。 */
-html {
-  scroll-behavior: smooth;
-}
-
 :target {
   scroll-margin-top: 84px;
 }
@@ -156,8 +148,7 @@ p {
 }
 
 /* 主色按钮背景本身就是翠蓝，焦点环改用深色，对比更清晰。 */
-.btn-primary:focus-visible,
-.btn-jade:focus-visible {
+.btn-primary:focus-visible {
   outline-color: var(--ink);
 }
 
@@ -165,13 +156,6 @@ p {
   .wrap {
     width: 100%;
     max-width: 1200px;
-    margin-inline: auto;
-    padding-inline: clamp(20px, 4vw, 40px);
-  }
-
-  .wrap-narrow {
-    width: 100%;
-    max-width: 920px;
     margin-inline: auto;
     padding-inline: clamp(20px, 4vw, 40px);
   }
@@ -209,11 +193,6 @@ p {
     letter-spacing: -0.02em;
   }
 
-  .serif,
-  .kai {
-    font-family: var(--font-body);
-  }
-
   .num {
     font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
@@ -229,14 +208,6 @@ p {
     font-weight: 500;
     letter-spacing: 0.01em;
     color: var(--jade);
-  }
-
-  .vertical-cn {
-    display: none;
-  }
-
-  .hairline {
-    border-top: 1px solid var(--line);
   }
 
   .paper-card {
@@ -300,15 +271,6 @@ p {
     box-shadow:
       0 1px 3px rgba(60, 64, 67, 0.2),
       0 4px 8px 3px rgba(60, 64, 67, 0.08);
-  }
-
-  .btn-jade {
-    background: var(--jade);
-    color: #ffffff;
-  }
-
-  .btn-jade:hover:not(:disabled) {
-    background: var(--jade-deep);
   }
 
   .btn-ghost {
@@ -385,12 +347,6 @@ p {
     transition: all 0.15s ease;
   }
 
-  .chip-active {
-    border-color: var(--jade);
-    background: var(--jade);
-    color: #ffffff;
-  }
-
   .ruled {
     background-image: none;
     line-height: 1.85;
@@ -419,30 +375,6 @@ p {
     color: var(--ink-mute);
   }
 
-  .tape {
-    display: none;
-  }
-
-  .link-arrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-weight: 500;
-    font-size: 15px;
-    color: var(--jade);
-    border-bottom: 1px solid transparent;
-    transition: gap 0.2s ease, border-color 0.2s ease;
-  }
-
-  .link-arrow:hover {
-    gap: 0.55rem;
-    border-color: var(--jade);
-  }
-
-  .stat-divider {
-    border-left: 1px solid var(--line);
-  }
-
   .skeleton {
     position: relative;
     overflow: hidden;
@@ -463,34 +395,6 @@ p {
     100% {
       transform: translateX(100%);
     }
-  }
-
-  .focus-line {
-    position: relative;
-  }
-
-  .focus-line::after {
-    display: none;
-  }
-
-  .score-em {
-    font-family: var(--font-body);
-    font-style: normal;
-    font-weight: 500;
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .no-scrollbar {
-    scrollbar-width: none;
   }
 }
 
@@ -534,10 +438,6 @@ p {
   .print-hide,
   .skip-link {
     display: none !important;
-  }
-
-  .print-page {
-    break-inside: avoid;
   }
 
   .paper-card {

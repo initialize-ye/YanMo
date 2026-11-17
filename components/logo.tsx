@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo() {
   return (
     <Link href="/" className="group flex items-center gap-3" aria-label="研墨 AI 首页">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-jade text-white transition-colors group-hover:bg-jade-deep">
@@ -11,11 +11,9 @@ export function Logo({ compact = false }: { compact?: boolean }) {
           研墨
           <span className="ml-1 align-top text-[12px] font-medium tracking-[0.06em] text-jade">AI</span>
         </span>
-        {!compact && (
-          <span className="mt-1.5 hidden text-[12px] font-medium uppercase tracking-[0.18em] text-ink-mute sm:block">
-            Yanmo Writing
-          </span>
-        )}
+        <span className="mt-1.5 hidden text-[12px] font-medium uppercase tracking-[0.18em] text-ink-mute sm:block">
+          Yanmo Writing
+        </span>
       </span>
     </Link>
   );

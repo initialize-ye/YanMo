@@ -49,26 +49,20 @@ export default function HistoryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
 
-  useEffect(() => {
-    let alive = true;
-    const refresh = () => {
-      fetchReports()
-        .then((list) => {
-          if (alive) setReports(list);
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          if (alive) setLoading(false);
-        });
-    };
-    refresh();
-    document.title = "写作档案 · 研墨 AI";
-    window.addEventListener("yanmo:reports-changed", refresh);
-    return () => {
-      alive = false;
-      window.removeEventListener("yanmo:reports-changed", refresh);
-    };
+  const refreshReports = useCallback(async () => {
+    try {
+      setReports(await fetchReports());
+    } catch {
+      // 读取失败时保留现有列表，避免把页面清空
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshReports();
+    document.title = "写作档案 · 研墨 AI";
+  }, [refreshReports]);
 
   useEffect(() => {
     if (loading || restoredRef.current) return;
@@ -170,10 +164,13 @@ export default function HistoryPage() {
     setPreview(null);
     setImportError(null);
     try {
-      const { added, dropped, droppedExisting } = await importReports(preview.reports);
+      const { added, dropped, droppedExisting, invalid } = await importReports(preview.reports);
       if (preview.profile && withProfile) await saveProfileToServer(preview.profile);
+      // 导入后立刻重新拉取，列表、统计和趋势图一起刷新。
+      await refreshReports();
       const notes = [`已导入 ${added} 篇报告`];
       if (preview.profile && withProfile) notes.push("已更新个人设置");
+      if (invalid > 0) notes.push(`${invalid} 条记录格式无效，已忽略`);
       if (dropped > 0) notes.push(`${dropped} 篇导入记录超出 ${MAX_REPORTS} 篇上限，未写入`);
       if (droppedExisting > 0) notes.push(`最早的 ${droppedExisting} 篇记录被挤出上限`);
       setImportNote(`${notes.join("；")}。`);
@@ -199,7 +196,6 @@ export default function HistoryPage() {
   const average = averagePercent(reports);
   const best = reports.length ? Math.max(...reports.map(scorePercent)) : 0;
   const totalAnnotations = reports.reduce((sum, report) => sum + report.annotations.length, 0);
-  const latest = reports[0];
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredReports = normalizedQuery
@@ -373,7 +369,7 @@ export default function HistoryPage() {
                 </span>
               ))}
               <span className="ml-auto hidden text-[12.5px] text-ink-mute sm:inline">
-                本地最多保存 {MAX_REPORTS} 篇
+                账号最多保存 {MAX_REPORTS} 篇
               </span>
             </div>
 
@@ -580,7 +576,7 @@ export default function HistoryPage() {
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-ink-mute">
               <span className="inline-flex items-center gap-1.5">
-                <Info size={12} /> 更换浏览器或清除站点数据会导致档案丢失，建议定期导出备份。
+                <Info size={12} /> 报告随账号保存在服务器；建议定期导出备份，便于离线留存。
               </span>
               <button
                 type="button"

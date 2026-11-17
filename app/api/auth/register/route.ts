@@ -1,4 +1,4 @@
-import { AppError, errorResponse } from "@/lib/server/errors";
+import { AppError, errorResponse, readJsonBody } from "@/lib/server/errors";
 import { createSession, createUser } from "@/lib/server/store";
 import { sessionCookie, toPublicUser } from "@/lib/server/auth";
 
@@ -9,12 +9,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      throw new AppError(400, "BAD_REQUEST", "请求内容不是合法的 JSON。");
-    }
+    const body = await readJsonBody(request);
     const record = (body ?? {}) as Record<string, unknown>;
     const email = typeof record.email === "string" ? record.email.trim() : "";
     const password = typeof record.password === "string" ? record.password : "";
@@ -36,7 +31,10 @@ export async function POST(request: Request) {
       throw error;
     }
     const token = await createSession(user.id);
-    return Response.json({ user: toPublicUser(user) }, { headers: { "Set-Cookie": sessionCookie(token) } });
+    return Response.json(
+      { user: toPublicUser(user) },
+      { headers: { "Set-Cookie": sessionCookie(token, request) } }
+    );
   } catch (error) {
     return errorResponse(error);
   }

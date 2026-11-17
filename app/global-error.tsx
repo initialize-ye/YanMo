@@ -29,7 +29,7 @@ export default function GlobalError({
           <h1 style={{ fontSize: 24, margin: "18px 0 10px" }}>应用出错了</h1>
           <p style={{ fontSize: 15, lineHeight: 1.7, color: "#5c6570", margin: 0 }}>
             发生了较严重的错误。可以点下面重试；如果反复出现，重启应用一般就能恢复，
-            本机保存的报告通常不受影响。
+            账号里的报告通常不受影响。
           </p>
           {error.digest && (
             <p

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     await destroySession(readSessionToken(request));
-    return Response.json({ ok: true }, { headers: { "Set-Cookie": clearSessionCookie() } });
+    return Response.json({ ok: true }, { headers: { "Set-Cookie": clearSessionCookie(request) } });
   } catch (error) {
     return errorResponse(error);
   }

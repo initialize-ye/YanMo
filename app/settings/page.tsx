@@ -53,7 +53,7 @@ export default function SettingsPage() {
   const [profileNote, setProfileNote] = useState(false);
 
   const [reportCount, setReportCount] = useState(0);
-  const [storageMb, setStorageMb] = useState<number | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
 
   useEffect(() => {
@@ -71,22 +71,8 @@ export default function SettingsPage() {
       .then((list) => setReportCount(list.length))
       .catch(() => undefined);
     void fetchAiStatus().then(setStatus);
-    // 估算本机已用存储，便于用户了解数据占用（不支持时静默跳过）。
-    refreshStorageEstimate();
     document.title = "设置 · 研墨 AI";
   }, []);
-
-  function refreshStorageEstimate() {
-    if (typeof navigator === "undefined" || !navigator.storage?.estimate) return;
-    navigator.storage
-      .estimate()
-      .then((estimate) => {
-        if (typeof estimate.usage === "number") {
-          setStorageMb(estimate.usage / (1024 * 1024));
-        }
-      })
-      .catch(() => {});
-  }
 
   // 清除确认态下按 Esc 取消，避免误触破坏性操作。
   useEffect(() => {
@@ -211,13 +197,16 @@ export default function SettingsPage() {
   };
 
   const handleClearReports = async () => {
+    setDataError(null);
     try {
       await clearReportsOnServer();
-    } catch {}
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "清除失败，请稍后重试。");
+      setClearConfirm(false);
+      return;
+    }
     setReportCount(0);
     setClearConfirm(false);
-    // 清除后重新估算占用，让"存储"一行及时刷新。
-    window.setTimeout(refreshStorageEstimate, 60);
   };
 
   return (
@@ -653,6 +642,15 @@ AI_MODEL=qwen-vl-max-latest`}
                 </div>
               </div>
 
+              {dataError && (
+                <p
+                  role="alert"
+                  className="mt-4 border border-cinnabar/30 bg-cinnabar/[0.05] px-3 py-2 text-[13px] leading-6 text-cinnabar"
+                >
+                  {dataError}
+                </p>
+              )}
+
               <p className="mt-4 text-[13px] leading-6 text-ink-mute">
                 登录账号后，报告会随账号同步；AI Key 存在本机，更换浏览器需重新填写。重要记录也可导出备份。
               </p>
@@ -682,9 +680,7 @@ AI_MODEL=qwen-vl-max-latest`}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[13.5px] text-ink-mute">存储</span>
-                  <span className="text-[13px] text-ink-soft">
-                    {storageMb != null ? `本机缓存 · 约 ${storageMb.toFixed(1)} MB` : "账号云端"}
-                  </span>
+                  <span className="text-[13px] text-ink-soft">账号云端</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[13.5px] text-ink-mute">版本</span>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles, X } from "lucide-react";
 import { loadAiConfig } from "@/lib/storage";
 import { fetchReports } from "@/lib/user-data";
+import { fetchAiStatus } from "@/lib/client-api";
 
 const DISMISS_KEY = "yanmo.firstrun.dismissed";
 
@@ -23,9 +24,10 @@ export function FirstRunHint() {
     } catch {
       return;
     }
-    fetchReports()
-      .then((reports) => {
-        if (alive && reports.length === 0) setShow(true);
+    Promise.all([fetchReports(), fetchAiStatus()])
+      .then(([reports, status]) => {
+        // 服务端已配置 AI 时不该再提示「去接入」，否则与 /grade 的判断不一致。
+        if (alive && !status.serverConfigured && reports.length === 0) setShow(true);
       })
       .catch(() => undefined);
     return () => {

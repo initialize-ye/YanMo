@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, LogOut, Menu, UserRound, X } from "lucide-react";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
-import { fetchMe, logout, type PublicUser } from "@/lib/user-data";
+import { fetchMe, logout } from "@/lib/user-data";
+import type { PublicUser } from "@/lib/types";
 
 const LINKS = [
   { href: "/grade", label: "批改台" },

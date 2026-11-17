@@ -1,5 +1,6 @@
 import { AppError } from "./errors";
 import { getSessionUser, type UserRecord } from "./store";
+import type { PublicUser } from "../types";
 
 export const SESSION_COOKIE = "yanmo_session";
 
@@ -21,20 +22,33 @@ export async function requireUser(request: Request): Promise<UserRecord> {
   return user;
 }
 
+/**
+ * 是否给会话 Cookie 加 Secure。
+ * 公网 HTTPS（含 Nginx 转发的 X-Forwarded-Proto: https）自动加；
+ * 用 http://IP:8080 验收时不加，否则浏览器会丢弃 Cookie，表现为登录后又被踢回登录页。
+ * 也可用 YANMO_SECURE_COOKIES=always|never 强制覆盖。
+ */
+function isSecureRequest(request: Request): boolean {
+  const override = process.env.YANMO_SECURE_COOKIES;
+  if (override === "always") return true;
+  if (override === "never") return false;
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) return forwarded.split(",")[0].trim() === "https";
+  return request.url.startsWith("https:");
+}
+
 /** 生成会话 Cookie 的 Set-Cookie 头。 */
-export function sessionCookie(token: string): string {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+export function sessionCookie(token: string, request: Request): string {
+  const secure = isSecureRequest(request) ? "; Secure" : "";
   return `${SESSION_COOKIE}=${encodeURIComponent(
     token
   )}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}${secure}`;
 }
 
-export function clearSessionCookie(): string {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+export function clearSessionCookie(request: Request): string {
+  const secure = isSecureRequest(request) ? "; Secure" : "";
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
-
-export type PublicUser = { id: string; email: string; createdAt: string };
 
 export function toPublicUser(user: UserRecord): PublicUser {
   return { id: user.id, email: user.email, createdAt: user.createdAt };

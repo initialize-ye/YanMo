@@ -1,6 +1,7 @@
-import { AppError, errorResponse } from "@/lib/server/errors";
+import { errorResponse, readJsonBody } from "@/lib/server/errors";
 import { requireUser } from "@/lib/server/auth";
 import { getProfile, saveProfile } from "@/lib/server/store";
+import { DEFAULT_PROFILE, maxScoreFor } from "@/lib/constants";
 import type { UserProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,21 +19,22 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await requireUser(request);
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      throw new AppError(400, "BAD_REQUEST", "请求内容不是合法的 JSON。");
-    }
+    const body = await readJsonBody(request);
     const record = (body as { profile?: Partial<UserProfile> })?.profile ?? {};
+
+    const exam = record.exam === "english2" ? "english2" : "english1";
+    const maxScore = maxScoreFor(exam, "essay");
+    // 目标分与批改参数使用同一套夹取规则：0—满分、0.5 的倍数。
+    const rawTarget = Number(record.targetScore);
+    const targetScore = Number.isFinite(rawTarget)
+      ? Math.min(maxScore, Math.max(0, Math.round(rawTarget * 2) / 2))
+      : Math.min(DEFAULT_PROFILE.targetScore, maxScore);
+
     const next: UserProfile = {
-      exam: record.exam === "english2" ? "english2" : "english1",
+      exam,
       level: record.level === "foundation" || record.level === "advanced" ? record.level : "steady",
-      targetScore:
-        typeof record.targetScore === "number" && Number.isFinite(record.targetScore)
-          ? record.targetScore
-          : 14,
-      examDate: typeof record.examDate === "string" ? record.examDate : ""
+      targetScore,
+      examDate: typeof record.examDate === "string" ? record.examDate.slice(0, 20) : ""
     };
     await saveProfile(user.id, next);
     return Response.json({ ok: true, profile: next });

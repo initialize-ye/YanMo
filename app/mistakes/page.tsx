@@ -38,22 +38,17 @@ export default function MistakesPage() {
 
   useEffect(() => {
     let alive = true;
-    const refresh = () => {
-      fetchReports()
-        .then((list) => {
-          if (alive) setReports(list);
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          if (alive) setLoading(false);
-        });
-    };
-    refresh();
+    fetchReports()
+      .then((list) => {
+        if (alive) setReports(list);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
     document.title = "错题本 · 研墨 AI";
-    window.addEventListener("yanmo:reports-changed", refresh);
     return () => {
       alive = false;
-      window.removeEventListener("yanmo:reports-changed", refresh);
     };
   }, []);
 

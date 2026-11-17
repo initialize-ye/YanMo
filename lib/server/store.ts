@@ -3,11 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { GradeResult, UserProfile } from "@/lib/types";
-import { DEFAULT_PROFILE } from "@/lib/constants";
+import { DEFAULT_PROFILE, MAX_REPORTS } from "@/lib/constants";
 
 const scryptAsync = promisify(scrypt);
 
-export const MAX_REPORTS = 100;
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 天
 
 export interface UserRecord {
@@ -135,10 +134,32 @@ export async function createSession(userId: string): Promise<string> {
 export async function getSessionUser(token: string): Promise<UserRecord | null> {
   if (!token) return null;
   const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
-  const record = sessions.find((s) => s.tokenHash === sha256(token));
+  const tokenHash = sha256(token);
+  const record = sessions.find((s) => s.tokenHash === tokenHash);
   if (!record) return null;
-  if (new Date(record.expiresAt).getTime() <= Date.now()) return null;
+  if (new Date(record.expiresAt).getTime() <= Date.now()) {
+    // 过期即顺手清理，避免 sessions.json 长期累积无效条目。
+    void pruneSessions(tokenHash);
+    return null;
+  }
   return findUserById(record.userId);
+}
+
+async function pruneSessions(tokenHash?: string): Promise<void> {
+  try {
+    await serialize("sessions", async () => {
+      const sessions = await readJson<SessionRecord[]>(SESSIONS_FILE(), []);
+      const now = Date.now();
+      const alive = sessions.filter(
+        (s) => new Date(s.expiresAt).getTime() > now && s.tokenHash !== tokenHash
+      );
+      if (alive.length !== sessions.length) {
+        await writeJsonAtomic(SESSIONS_FILE(), alive);
+      }
+    });
+  } catch {
+    // 清理失败不影响当前请求
+  }
 }
 
 export async function destroySession(token: string): Promise<void> {

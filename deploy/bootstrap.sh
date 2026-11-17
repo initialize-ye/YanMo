@@ -48,7 +48,7 @@ npm -v
 
 echo "==> 6/6 创建运行用户与目录"
 id -u yanmo >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin yanmo
-mkdir -p /srv/yanmo/app /srv/yanmo/data /srv/yanmo/public/downloads /srv/yanmo/public/updates /var/www/certbot
+mkdir -p /srv/yanmo/app /srv/yanmo/data /var/www/certbot
 chown -R yanmo:yanmo /srv/yanmo
 
 echo

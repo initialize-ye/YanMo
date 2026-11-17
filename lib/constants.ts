@@ -1,7 +1,6 @@
 import type {
   ErrorCategory,
   EssayKind,
-  EssayMeta,
   ExamId,
   Impact,
   LevelId,
@@ -188,27 +187,5 @@ export const TOPICS: Record<ExamId, Record<EssayKind, TopicPreset[]>> = {
     ]
   }
 };
-
-export const DEFAULT_TOPIC: Record<EssayKind, TopicPreset> = {
-  essay: TOPICS.english1.essay[0],
-  letter: TOPICS.english1.letter[0]
-};
-
-export function findTopic(exam: ExamId, kind: EssayKind, id: string): TopicPreset | undefined {
-  return TOPICS[exam][kind].find((topic) => topic.id === id);
-}
-
-export function defaultMeta(profile: UserProfile = DEFAULT_PROFILE): EssayMeta {
-  const topics = TOPICS[profile.exam];
-  const topic = topics.essay[0];
-  return {
-    exam: profile.exam,
-    kind: "essay",
-    topicTitle: topic.title,
-    topicPrompt: topic.prompt,
-    targetScore: Math.min(profile.targetScore, maxScoreFor(profile.exam, "essay")),
-    level: profile.level
-  };
-}
 
 export const MAX_REPORTS = 100;

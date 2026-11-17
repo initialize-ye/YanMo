@@ -97,6 +97,13 @@ export interface UserProfile {
   examDate: string;
 }
 
+/** 对外暴露的用户信息（不含密码哈希与会话），服务端与浏览器共用同一份定义。 */
+export interface PublicUser {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface AiConfig {
   baseUrl: string;
   model: string;

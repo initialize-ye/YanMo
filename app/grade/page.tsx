@@ -364,6 +364,20 @@ export default function GradePage() {
     return () => window.removeEventListener("drop", onDrop);
   }, [stage, mode, handleFile]);
 
+  const runRecognition = async (image: PreparedImage) => {
+    setOcrState("running");
+    setOcrError(null);
+    try {
+      const result = await apiOcr(image.dataUrl, aiConfig);
+      setOcr(result);
+      setText(result.text);
+      setOcrState("done");
+    } catch (err) {
+      setOcrState("error");
+      setOcrError(err instanceof Error ? err.message : "识别失败，请重试。");
+    }
+  };
+
   const startRecognition = async () => {
     if (!configured) {
       setError("还没有配置 AI。请先到设置页填写 API Key。");
@@ -375,17 +389,7 @@ export default function GradePage() {
     }
     setStage("recognize");
     setOcr(null);
-    setOcrState("running");
-    setOcrError(null);
-    try {
-      const result = await apiOcr(prepared.dataUrl, aiConfig);
-      setOcr(result);
-      setText(result.text);
-      setOcrState("done");
-    } catch (err) {
-      setOcrState("error");
-      setOcrError(err instanceof Error ? err.message : "识别失败，请重试。");
-    }
+    await runRecognition(prepared);
   };
 
   const startGrading = async (content: string) => {
@@ -488,29 +492,17 @@ export default function GradePage() {
     setGradingError(null);
   };
 
-  const retryRecognition = () => {
+  const retryRecognition = async () => {
     if (!prepared) {
       setStage("compose");
       return;
     }
-    void (async () => {
-      if (!configured) {
-        setError("还没有接入 AI。请先到设置页填写 API Key。");
-        setStage("compose");
-        return;
-      }
-      setOcrState("running");
-      setOcrError(null);
-      try {
-        const result = await apiOcr(prepared.dataUrl, aiConfig);
-        setOcr(result);
-        setText(result.text);
-        setOcrState("done");
-      } catch (err) {
-        setOcrState("error");
-        setOcrError(err instanceof Error ? err.message : "识别失败，请重试。");
-      }
-    })();
+    if (!configured) {
+      setError("还没有接入 AI。请先到设置页填写 API Key。");
+      setStage("compose");
+      return;
+    }
+    await runRecognition(prepared);
   };
 
   const discardDraft = () => {
@@ -529,7 +521,6 @@ export default function GradePage() {
 
   const stageIndex = stage === "compose" ? 0 : stage === "recognize" ? 1 : 2;
   const showSetupNotice = mounted && status !== null && !configured;
-  const needsSetup = showSetupNotice;
   const canStart =
     (mode === "image" ? Boolean(prepared) && !preparing : text.trim().length >= 40) &&
     !topicExtracting;
@@ -862,12 +853,12 @@ export default function GradePage() {
                 )}
 
                 <p className="mt-6 border-t border-line/70 pt-3 text-[13px] leading-6 text-ink-mute">
-                  提交后作文内容会发送到你配置的 AI 服务用于批改；作文正文不落库，报告保存在你的账号下。
+                  提交后作文内容会发送到你配置的 AI 服务用于批改；批改报告（含作文原文）保存在你的账号下，可在写作档案中删除或导出。
                 </p>
 
                 {/* 提交区跟随表单正常排布：不再视口悬浮，避免滚动时遮挡正文。 */}
                 <div className="mt-4">
-                  {needsSetup ? (
+                  {showSetupNotice ? (
                     <Link
                       href="/settings"
                       className="btn btn-primary w-full justify-between !px-6 !py-4 text-[15.5px]"
@@ -895,14 +886,14 @@ export default function GradePage() {
                   )}
                   <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-mute">
                     <span>
-                      {needsSetup
+                      {showSetupNotice
                         ? "填好接口信息后回到这里即可开始"
                         : canStart
                           ? "准备好了"
                           : mode === "image"
                             ? "先选择一张作文照片"
                             : "至少输入 40 个字符"}
-                      {!needsSetup && canStart && (
+                      {!showSetupNotice && canStart && (
                         <span className="hidden sm:inline"> · Ctrl + Enter 提交</span>
                       )}
                     </span>
