@@ -13,6 +13,9 @@ RUN_USER="${RUN_USER:-yanmo}"
 
 as_user() { sudo -u "$RUN_USER" -H bash -lc "cd '$APP_DIR' && $*"; }
 
+# 允许对属主不同的仓库执行 git（避免 dubious ownership 报错）
+sudo -u "$RUN_USER" -H git config --global --add safe.directory "$APP_DIR" >/dev/null 2>&1 || true
+
 echo "==> [1/7] 记录当前版本"
 PREV="$(as_user "git rev-parse HEAD" 2>/dev/null || echo "")"
 echo "prev=$PREV"

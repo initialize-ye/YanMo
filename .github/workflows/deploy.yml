@@ -30,4 +30,4 @@ jobs:
             -o ConnectTimeout=20 \
             -o ServerAliveInterval=30 \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            'bash -lc "set -e; cd /srv/yanmo/app; if [ ! -f deploy/deploy.sh ]; then git fetch -q origin && git reset -q --hard origin/main; fi; bash deploy/deploy.sh"'
+            'bash -lc "set -e; sudo -u yanmo -H bash -lc \"git config --global --add safe.directory /srv/yanmo/app; cd /srv/yanmo/app; git fetch -q origin; git reset -q --hard origin/main\"; bash /srv/yanmo/app/deploy/deploy.sh"'
