@@ -1,36 +1,33 @@
-name: Deploy
+name: Deploy to Server
 
-# 推送到 main 自动部署；也可在 Actions 页面手动触发。
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# 同一时间只允许一个部署，新提交排队而不是并发覆盖。
+# 只保留一个部署任务，排队执行，避免并发重启服务
 concurrency:
-  group: deploy-production
+  group: deploy-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: SSH 部署到云服务器
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          command_timeout: 25m
-          script_stop: true
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.DEPLOY_PATH }}"
-            # 首次部署时服务器上还没有 deploy.sh：先拉一次代码再执行，避免「脚本不存在」。
-            if [ ! -f deploy/deploy.sh ]; then
-              git fetch --prune origin
-              git checkout main
-              git pull --ff-only origin main
-            fi
-            bash deploy/deploy.sh "${{ github.sha }}"
+      - name: Run deploy script over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=30 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'bash -lc "set -e; cd /srv/yanmo/app; if [ ! -f deploy/deploy.sh ]; then git fetch -q origin && git reset -q --hard origin/main; fi; bash deploy/deploy.sh"'

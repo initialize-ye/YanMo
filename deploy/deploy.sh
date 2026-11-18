@@ -1,73 +1,75 @@
 #!/usr/bin/env bash
-# 研墨 AI —— 服务器端一键部署脚本（由 GitHub Actions 调用，也可手动执行）
+# 研墨 AI —— 服务器端部署脚本（可被 GitHub Actions 或手动调用）
+# 作用：拉取最新代码 → 按需安装依赖 → 构建 → 重启服务 → 健康检查 →（失败则回滚）
 #
-# 用法：
-#   bash deploy/deploy.sh                # 只部署
-#   bash deploy/deploy.sh <expected_sha>  # 部署后校验 /api/version 的 commit 是否为该提交
-#
-# 前置条件（一次性）：
-#   1) 服务器已 git clone 本仓库到 APP_DIR（默认 /srv/yanmo/app），并能对 origin 只读拉取；
-#   2) 运行用户可执行 `sudo systemctl restart yanmo`（见 deploy/README.md 的 sudoers 说明）；
-#   3) 已配置 .env.production（含 AI Key 等）。
+# 用法：bash /srv/yanmo/app/deploy/deploy.sh
+# 可调环境变量：APP_DIR(默认 /srv/yanmo/app) BRANCH(默认 main) RUN_USER(默认 yanmo)
+
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/srv/yanmo/app}"
-SERVICE="${SERVICE:-yanmo}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/api/version}"
-EXPECTED_SHA="${1:-}"
+BRANCH="${BRANCH:-main}"
+RUN_USER="${RUN_USER:-yanmo}"
 
-# root 直接执行时不需要 sudo；普通用户走 sudo（需配 NOPASSWD）。
-if [ "$(id -u)" -eq 0 ]; then
-  SUDO=""
-else
-  SUDO="sudo"
+as_user() { sudo -u "$RUN_USER" -H bash -lc "cd '$APP_DIR' && $*"; }
+
+echo "==> [1/7] 记录当前版本"
+PREV="$(as_user "git rev-parse HEAD" 2>/dev/null || echo "")"
+echo "prev=$PREV"
+
+echo "==> [2/7] 拉取 origin/$BRANCH"
+as_user "git fetch --prune origin"
+as_user "git reset --hard origin/$BRANCH"
+NEW="$(as_user "git rev-parse HEAD")"
+echo "new=$NEW"
+
+if [ "$PREV" = "$NEW" ] && sudo systemctl is-active --quiet yanmo; then
+  echo "==> 代码无变化且服务正常，跳过重建"
+  exit 0
 fi
 
-cd "$APP_DIR"
+echo "==> [3/7] 依赖（package-lock 变化时才 npm ci）"
+LOCK_HASH_FILE="$APP_DIR/.next/.deploy-lock-hash"
+CUR_HASH="$(sha256sum "$APP_DIR/package-lock.json" | awk '{print $1}')"
+PREV_HASH="$(cat "$LOCK_HASH_FILE" 2>/dev/null || echo "")"
+if [ "$CUR_HASH" != "$PREV_HASH" ]; then
+  echo "    lock 有变化，执行 npm ci"
+  as_user "npm ci --no-audit --no-fund"
+  mkdir -p "$APP_DIR/.next"
+  echo "$CUR_HASH" | sudo tee "$LOCK_HASH_FILE" >/dev/null
+  sudo chown "$RUN_USER:$RUN_USER" "$LOCK_HASH_FILE"
+else
+  echo "    lock 未变，跳过 npm ci"
+fi
 
-echo "==> [1/5] 拉取最新代码"
-git fetch --prune origin
-# 服务器不应有本地改动；用 ff-only，若分叉则明确失败而不是强推覆盖。
-git checkout main
-git pull --ff-only origin main
-echo "    当前提交：$(git rev-parse --short HEAD)"
+echo "==> [4/7] 构建 Next（standalone）"
+as_user "NODE_OPTIONS=--max-old-space-size=2560 npm run build && npm run prepare:standalone"
 
-echo "==> [2/5] 安装依赖（含 devDependencies，构建需要）"
-npm ci --include=dev --no-audit --no-fund
+echo "==> [5/7] 重启服务"
+sudo systemctl restart yanmo
 
-echo "==> [3/5] 构建"
-NODE_OPTIONS=--max-old-space-size=3072 npm run build
-
-echo "==> [4/5] 准备 standalone 静态资源"
-npm run prepare:standalone
-
-echo "==> [5/5] 重启服务并做健康检查"
-$SUDO systemctl restart "$SERVICE"
-
-# 等待服务就绪（最多约 30 秒）
-for i in $(seq 1 15); do
-  if curl -fsS "$HEALTH_URL" -o /tmp/yanmo-version.json 2>/dev/null; then
-    break
-  fi
+echo "==> [6/7] 健康检查"
+ok=0
+for i in $(seq 1 30); do
+  if curl -sf -m 3 http://127.0.0.1:3000/api/status >/dev/null 2>&1; then ok=1; break; fi
   sleep 2
 done
 
-if [ ! -s /tmp/yanmo-version.json ]; then
-  echo "❌ 健康检查失败：$HEALTH_URL 无响应"
-  $SUDO systemctl status "$SERVICE" --no-pager || true
-  exit 1
+if [ "$ok" = "1" ]; then
+  echo "==> [7/7] 部署成功：$NEW"
+  sudo systemctl is-active yanmo
+  exit 0
 fi
 
-echo "    版本信息：$(cat /tmp/yanmo-version.json)"
-ACTUAL_COMMIT="$(node -e 'const f=require("/tmp/yanmo-version.json");process.stdout.write(String(f.commit||"unknown"))' 2>/dev/null || echo unknown)"
-echo "    线上 commit：$ACTUAL_COMMIT"
-
-if [ -n "$EXPECTED_SHA" ]; then
-  EXPECTED_SHORT="$(printf '%s' "$EXPECTED_SHA" | cut -c1-7)"
-  case "$ACTUAL_COMMIT" in
-    "$EXPECTED_SHORT"*) echo "✅ 部署完成，commit 匹配（$EXPECTED_SHORT）" ;;
-    *) echo "❌ commit 不匹配：期望 $EXPECTED_SHORT，实际 $ACTUAL_COMMIT"; exit 1 ;;
-  esac
-else
-  echo "✅ 部署完成"
+echo "!!! 健康检查失败，开始回滚到 $PREV"
+if [ -n "$PREV" ]; then
+  as_user "git reset --hard $PREV"
+  as_user "NODE_OPTIONS=--max-old-space-size=2560 npm run build && npm run prepare:standalone" || true
+  sudo systemctl restart yanmo || true
+  for i in $(seq 1 20); do
+    curl -sf -m 3 http://127.0.0.1:3000/api/status >/dev/null 2>&1 && { echo "已回滚到 $PREV"; exit 1; }
+    sleep 2
+  done
 fi
+echo "回滚后仍不健康，请查看 journalctl -u yanmo"
+exit 1
